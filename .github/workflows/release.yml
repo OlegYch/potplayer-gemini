@@ -41,3 +41,5 @@ jobs:
           rm -rf ./.git
           rm -rf ./project/target #clean doesn't clean meta-build
 
+permissions:
+  contents: write
