@@ -20,7 +20,7 @@ object Build {
       val configs = List(
         Config(500, 50, "gemini-2.0-flash", "Gemini-Flash-Free"),
         Config(0, 100, "gemini-2.0-flash", "Gemini-Flash-Paid"),
-        Config(500, 500, "gemini-2.0-flash-lite", "Gemini-Lite-Free"),
+        Config(200, 50, "gemini-2.0-flash-lite", "Gemini-Lite-Free"),
       )
       val files = configs.flatMap { config =>
         val compiled = source
