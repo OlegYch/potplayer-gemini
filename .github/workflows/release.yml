@@ -2,10 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [ '**' ]
-    tags: [ '**' ]
   pull_request:
-    branches: [ '**' ]
 
 jobs:
   build:
@@ -20,6 +17,7 @@ jobs:
         with:
           java-version: 21
           distribution: adopt
+          cache: sbt
 
       - name: Set up SBT
         uses: sbt/setup-sbt@v1
