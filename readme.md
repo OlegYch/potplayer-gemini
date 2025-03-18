@@ -5,7 +5,7 @@ Uses [Gemini](https://gemini.google.com/app) to translate subtitles in real time
 ## Installation
 - Go to https://aistudio.google.com/app/apikey and register to get Gemini key (if you haven't already)
   ![API Key](images/key.png)
-- Download zip file from [releases](/releases)
+- Download zip file from [releases](https://github.com/OlegYch/potplayer-gemini/releases)
 - Unzip to PotPlayer installation folder, eg `C:\Program Files\PotPlayer\Extension\Subtitle\Translate`
 - Launch PotPlayer
 - Open Settings -> Extensions -> Subtitle Translation:

@@ -10,7 +10,10 @@ object Build {
     Compile / Keys.compile / Keys.skip                   := true,
     Compile / Keys.packageBin / Keys.artifactName        := ((_, _, _) => "potplayer-gemini.zip"),
     Compile / Keys.productDirectories                    := Seq(file("target/potplayer-gemini")),
-    Compile / Keys.products                              := (Compile / Keys.productDirectories).value,
+    Compile / Keys.products                              := {
+      build.value
+      (Compile / Keys.productDirectories).value
+    },
     Compile / Keys.unmanagedSourceDirectories            := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
     build := {
