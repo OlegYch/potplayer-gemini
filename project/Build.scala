@@ -25,9 +25,8 @@ object Build {
       val source     = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
       val configs = List(
-        Config(500, 50, "gemini-2.0-flash", "Gemini-Flash-Free"),
+        Config(300, 50, "gemini-2.0-flash", "Gemini-Flash-Free"),
         Config(0, 100, "gemini-2.0-flash", "Gemini-Flash-Paid"),
-        Config(200, 50, "gemini-2.0-flash-lite", "Gemini-Lite-Free"),
       )
       val files = configs.flatMap { config =>
         val compiled = source

@@ -7,13 +7,15 @@
 string default_prompt = "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation";
 // minimum milliseconds between translations, designed to keep api call rate under free tier limit
 // if you have paid tier you can set it to 0
-uint DefaultPause = 500;
+uint DefaultPause = 300;
 // how much previous lines to pass to translation for improved understanding of the text
 // may quickly drain token quota, increase with care
 uint MaxContextLines = 50;
 // gemini-2.0-flash is the default with highest quality, but limited to 15 translations per minute / 1500 per day in free tier
 // gemini-2.0-flash-lite is simpler, and limited to 30 translations per minute / 1500 per day in free tier
 string Model = "gemini-2.0-flash";
+string ModelFallback = "gemini-2.0-flash-lite";
+
 string Name = "Gemini-Flash-Free";
 
 bool debug = false;
@@ -213,8 +215,18 @@ string ServerLogin(string User, string Pass)
   if (!User.empty())	current_prompt = User;
   else current_prompt = default_prompt;
 	api_key = Pass;
-	if (api_key.empty()) return "fail";
-	return "200 ok";
+	if (api_key.empty()) return "Empty API key";
+  dictionary result = CallGemini("Test", "English", "French", Model);
+  string success = string(result['success']);
+  string error = string(result['error']);
+  if (!success.empty())
+  {
+  	return "200 ok";
+  }
+  else
+  {
+    return error;
+  }
 }
 
 array<string> GetSrcLangs()
@@ -238,9 +250,8 @@ uint Pause = DefaultPause;
 array<string> ContextUser = {};
 array<string> ContextModel = {};
 
-dictionary CallGemini(string Text, string &in SrcLang, string &in DstLang, string Model)
+dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 {
-  LastTime = HostGetTickCount();
   string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
   string prompt = current_prompt;
   string context = "";
@@ -276,6 +287,7 @@ dictionary CallGemini(string Text, string &in SrcLang, string &in DstLang, strin
   //HostPrintUTF8(Post);
 
   uintptr http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
+  string error = Model + ": ";
   if (http != 0)
   {
 		string json = HostGetContentHTTP(http);
@@ -298,9 +310,10 @@ dictionary CallGemini(string Text, string &in SrcLang, string &in DstLang, strin
           ret = ret.substr(last - 1, -1);
         }
         ContextUser.insertLast(Text);
-        ret.replace("\r", "");
+        ret.replace("\r\n", " ");
         ret.replace("\n", " ");
         ret.replace("\"", "'");
+        ret.replace("\\", "/");
         ContextModel.insertLast(ret);
         ret += "\n";
         //HostPrintUTF8(ret);
@@ -308,19 +321,19 @@ dictionary CallGemini(string Text, string &in SrcLang, string &in DstLang, strin
       }
       else
       {
-        string error = Root["error"]["message"].asString();
+        error += Root["error"]["message"].asString();
         HostPrintUTF8(error);
         return {{'error', error}};
       }
     }
     else
     {
-      return {{'error', "Can't parse " + json}};
+      return {{'error', error + "Can't parse " + json}};
     }
   }
   else
   {
-    return {{'error', "Can't open http connection"}};
+    return {{'error', error + "Can't open http connection"}};
   }
 }
 
@@ -342,6 +355,8 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   }
 
   Text.replace("\"", "'");
+  Text.replace("\\", "/");
+  Text.replace("\r\n", " ");
   Text.replace("\n", " ");
   if (ContextUser.length() > MaxContextLines)
   {
@@ -355,16 +370,29 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
 	{
     HostPrintUTF8("Too fast, waiting for " + formatUInt(Pause - elapsed));
 	  ret = "";
-	} else
+	}
+  else
 	{
+    LastTime = HostGetTickCount();
 		dictionary result = CallGemini(Text, SrcLang, DstLang, Model);
 		string success = string(result['success']);
+		if (success.empty())
+		{
+		  HostSleep(DefaultPause);
+		  result = CallGemini(Text, SrcLang, DstLang, Model);
+		  success = string(result['success']);
+		  if (success.empty())
+		  {
+        result = CallGemini(Text, SrcLang, DstLang, ModelFallback);
+        success = string(result['success']);
+		  }
+		}
 		string error = string(result['error']);
 		if (!success.empty())
 		{
 		  ret = success;
       Untranslated = "";
-      if (Pause > DefaultPause * 2)
+      if (Pause > DefaultPause)
       {
         Pause -= DefaultPause / 2; //slowly allow more requests
         HostPrintUTF8("Decreasing pause to " + formatUInt(Pause));

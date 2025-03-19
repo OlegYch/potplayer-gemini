@@ -20,12 +20,14 @@ Uses [Gemini](https://gemini.google.com/app) to translate subtitles in real time
 
 ## Tuning
 ### Models
-At the moment there are three versions of extension with different default settings:
-- Gemini-Flash-Free uses the best available model for translation and is tuned to be used with free account, by forcing a bit of delay between translation calls.
-- Gemini-Flash-Paid uses the same model and a bit more relaxed settings for better experience, but can be problematic when using with free account. Try it after you set up Gemini billing. 
-- Gemini-Lite-Free uses a simpler, faster model which is suitable for many languages, but not all. Try it if you don't want to set up Gemini billing and get too much translation delay.
+- gemini-2.0-flash model is used by default because of its superior translation quality.
+- gemini-2.0-flash-lite is used as a fallback when an error occurs, e.g. request quota is exceeded.
 
-Note that free Gemini plan is limited to 1500 translations per day, which should probably be enough for one movie.
+At the moment there are two versions of extension with different settings:
+- Gemini-Flash-Free uses the best available model for translation and is tuned to be used with free account, by forcing a bit of delay between translation calls.
+- Gemini-Flash-Paid uses a bit more relaxed settings for better experience, but can be problematic when using with free account. Try it after you set up Gemini billing. 
+
+Note that free Gemini plan is limited to 1500 translations per day per model, which should probably be enough for a couple of movies.
 
 ### Prompt
 During extension login you can provide custom translation prompt.
