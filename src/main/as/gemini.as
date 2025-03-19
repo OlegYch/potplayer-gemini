@@ -16,6 +16,8 @@ uint MaxContextLines = 50;
 string Model = "gemini-2.0-flash";
 string Name = "Gemini-Flash-Free";
 
+bool debug = false;
+
 // void OnInitialize()
 // void OnFinalize()
 // string GetTitle() 														-> get title for UI
@@ -236,35 +238,11 @@ uint Pause = DefaultPause;
 array<string> ContextUser = {};
 array<string> ContextModel = {};
 
-string Translate(string Text, string &in SrcLang, string &in DstLang)
+dictionary CallGemini(string Text, string &in SrcLang, string &in DstLang, string Model)
 {
-  if (api_key.empty())
-  {
-    return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";
-  }
-//HostOpenConsole();	// for debug
-//HostPrintUTF8(Untranslated + "---");
-//HostPrintUTF8(Text);
-  for ( uint i = 0; i < LangTable.length(); i++)
-  {
-    string short = LangTable[i][0];
-    string full = LangTable[i][1];
-  	if (SrcLang == short) SrcLang = full;
-	  if (DstLang == short) DstLang = full;
-  }
-
-	string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
-
-	string SendHeader = "";
-	SendHeader += "Content-Type: application/json\r\n";
-
-  Text.replace("\"", "'");
-  Text.replace("\n", " ");
-  if (ContextUser.length() > MaxContextLines)
-  {
-    ContextUser.removeRange(0, 1);
-    ContextModel.removeRange(0, 1);
-  }
+  LastTime = HostGetTickCount();
+  string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
+  string prompt = current_prompt;
   string context = "";
   for( uint n = 0; n < ContextUser.length(); n++ )
   {
@@ -272,8 +250,6 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
     context += """{"role":"model", "parts":[{"text": " """ + ContextModel[n] + """ "}]},""";
   }
   //HostPrintUTF8(context);
-//HostPrintUTF8(Text);
-  string prompt = current_prompt;
   if (SrcLang.length() > 0)
   {
     prompt += ", translate from " + SrcLang + " to " + DstLang;
@@ -281,8 +257,9 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   {
     prompt += ", translate to " + DstLang;
   }
-	string Post = """{
-	"safety_settings":[
+  string SendHeader = "Content-Type: application/json\r\n";
+  string Post = """{
+  "safety_settings":[
       {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
       {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
       {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
@@ -296,35 +273,24 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
     """{"role":"user", "parts":[{"text": " """ + Untranslated + Text + """ "}]}
   ]
   }""";
-//HostPrintUTF8(Post);
+  //HostPrintUTF8(Post);
 
-	string ret = "";
-	uintptr http = 0;
-	uint elapsed = HostGetTickCount() - LastTime;
-	if (elapsed < Pause) //add some delay between subsequent calls to hopefully fit in gemini free tier
-	{
-    HostPrintUTF8("Too fast, waiting for " + formatUInt(Pause - elapsed));
-	  ret = "";
-	} else
-	{
-    LastTime = HostGetTickCount();
-	  http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
-	}
-	if (http != 0)
-	{
+  uintptr http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
+  if (http != 0)
+  {
 		string json = HostGetContentHTTP(http);
     string headers = HostGetHeaderHTTP(http);
+		HostCloseHTTP(http);
 		//HostPrintUTF8(json);
 		//HostPrintUTF8(headers);
-		JsonReader Reader;
-		JsonValue Root;
-
-		if (Reader.parse(json, Root))
-		{
+    JsonReader Reader;
+    JsonValue Root;
+    if (Reader.parse(json, Root) && Root.isObject())
+    {
       JsonValue choices = Root["candidates"];
       if (choices.isArray())
       {
-        ret = choices[0]["content"]["parts"][0]["text"].asString();
+        string ret = choices[0]["content"]["parts"][0]["text"].asString();
         ret.erase(ret.length() - 1, 1);
         int last = ret.findLast("\n");
         if (last > 0)
@@ -338,30 +304,85 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
         ContextModel.insertLast(ret);
         ret += "\n";
         //HostPrintUTF8(ret);
-        Untranslated = "";
-        if (Pause > DefaultPause * 2)
-        {
-          Pause -= DefaultPause / 2; //slowly allow more requests
-          HostPrintUTF8("Decreasing pause to " + formatUInt(Pause));
-        }
-      } else {
+        return {{'success', ret}};
+      }
+      else
+      {
         string error = Root["error"]["message"].asString();
         HostPrintUTF8(error);
-        if (Pause < DefaultPause * 10)
-        {
-          Pause += DefaultPause / 2;
-          HostPrintUTF8("Increasing pause to " + formatUInt(Pause));
-          ret = "";
-        } else
-        {
-          ret = error; //give up and display error
-        }
+        return {{'error', error}};
+      }
+    }
+    else
+    {
+      return {{'error', "Can't parse " + json}};
+    }
+  }
+  else
+  {
+    return {{'error', "Can't open http connection"}};
+  }
+}
+
+string Translate(string Text, string &in SrcLang, string &in DstLang)
+{
+  if (api_key.empty())
+  {
+    return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";
+  }
+  if (debug) HostOpenConsole();
+//HostPrintUTF8(Untranslated + "---");
+//HostPrintUTF8(Text);
+  for ( uint i = 0; i < LangTable.length(); i++)
+  {
+    string short = LangTable[i][0];
+    string full = LangTable[i][1];
+  	if (SrcLang == short) SrcLang = full;
+	  if (DstLang == short) DstLang = full;
+  }
+
+  Text.replace("\"", "'");
+  Text.replace("\n", " ");
+  if (ContextUser.length() > MaxContextLines)
+  {
+    ContextUser.removeRange(0, 1);
+    ContextModel.removeRange(0, 1);
+  }
+  //HostPrintUTF8(Text);
+	string ret = "";
+	uint elapsed = HostGetTickCount() - LastTime;
+	if (elapsed < Pause) //add some delay between subsequent calls to hopefully fit in gemini free tier
+	{
+    HostPrintUTF8("Too fast, waiting for " + formatUInt(Pause - elapsed));
+	  ret = "";
+	} else
+	{
+		dictionary result = CallGemini(Text, SrcLang, DstLang, Model);
+		string success = string(result['success']);
+		string error = string(result['error']);
+		if (!success.empty())
+		{
+		  ret = success;
+      Untranslated = "";
+      if (Pause > DefaultPause * 2)
+      {
+        Pause -= DefaultPause / 2; //slowly allow more requests
+        HostPrintUTF8("Decreasing pause to " + formatUInt(Pause));
+      }
+		} else
+		{
+      if (Pause < DefaultPause * 10)
+      {
+        Pause += DefaultPause / 2;
+        HostPrintUTF8("Increasing pause to " + formatUInt(Pause));
+        ret = "";
+      } else
+      {
+        ret = error; //give up and display error
       }
 		}
-
-		HostCloseHTTP(http);
 	}
-	if (ret.length() == 0)
+	if (ret.empty())
 	{
     ret = ".";
     Untranslated += Text + " ";

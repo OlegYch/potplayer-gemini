@@ -2,21 +2,25 @@ import sbt.*
 import sbt.Keys
 
 object Build {
-  lazy val build  = taskKey[Seq[File]]("build")
-  lazy val deploy = taskKey[Unit]("deploy")
+  lazy val build        = taskKey[Seq[File]]("build")
+  lazy val deploy       = taskKey[Unit]("deploy")
+  lazy val deployTarget = settingKey[File]("potplayer dir")
+
   case class Config(DefaultPause: Int, MaxContextLines: Int, Model: String, Name: String)
 
   def settings = Seq(
-    Compile / Keys.compile / Keys.skip                   := true,
-    Compile / Keys.packageBin / Keys.artifactName        := ((_, _, _) => "potplayer-gemini.zip"),
-    Compile / Keys.productDirectories                    := Seq(file("target/potplayer-gemini")),
-    Compile / Keys.products                              := {
+    deployTarget                                  := file("""d:\program files\PotPlayer\"""),
+    Compile / Keys.compile / Keys.skip            := true,
+    Compile / Keys.packageBin / Keys.artifactName := ((_, _, _) => "potplayer-gemini.zip"),
+    Compile / Keys.productDirectories             := Seq(file("target/potplayer-gemini")),
+    Compile / Keys.products := {
       build.value
       (Compile / Keys.productDirectories).value
     },
     Compile / Keys.unmanagedSourceDirectories            := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
     build := {
+      val debug      = deployTarget.value.exists()
       val target     = (Compile / Keys.productDirectories).value.head
       val source     = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
@@ -31,6 +35,7 @@ object Build {
           .replaceFirst("uint MaxContextLines =.*", "uint MaxContextLines = " + config.MaxContextLines + ";")
           .replaceFirst("string Model =.*", "string Model = \"" + config.Model + "\";")
           .replaceFirst("string Name =.*", "string Name = \"" + config.Name + "\";")
+          .replaceFirst("bool debug =.*", "bool debug = " + debug + ";")
         val compiledAs = target / s"SubtitleTranslate - ${config.Name}.as"
         IO.write(compiledAs, compiled)
         val compiledIcon = target / s"SubtitleTranslate - ${config.Name}.ico"
@@ -40,9 +45,11 @@ object Build {
       files
     },
     deploy := {
-      val built        = build.value
-      val deployTarget = file("""d:\program files\PotPlayer\Extension\Subtitle\Translate""")
-      IO.copy(built.map(f => (f, deployTarget / f.name)), CopyOptions().withOverwrite(true))
+      val built = build.value
+      IO.copy(built.map(f => (f, deployTarget.value / "Extension/Subtitle/Translate" / f.name)), CopyOptions().withOverwrite(true))
+      import scala.sys.process.*
+      (deployTarget.value / "KillPot64.exe").absolutePath.!
+      (deployTarget.value / "PotPlayerMini64.exe").absolutePath.run()
     },
   )
 }
