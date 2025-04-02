@@ -208,14 +208,14 @@ string GetPasswordText()
 }
 
 string current_prompt;
-string api_key;
+string api_keys;
 
 string ServerLogin(string User, string Pass)
 {
   if (!User.empty())	current_prompt = User;
   else current_prompt = default_prompt;
-	api_key = Pass;
-	if (api_key.empty()) return "Empty API key";
+	api_keys = Pass;
+	if (api_keys.empty()) return "Empty API key";
   dictionary result = CallGemini("Test", "English", "French", Model);
   string success = string(result['success']);
   string error = string(result['error']);
@@ -246,12 +246,22 @@ array<string> GetDstLangs()
 
 string Untranslated = "";
 uint LastTime = 0;
+uint CurrentApiKey = 0;
 uint Pause = DefaultPause;
 array<string> ContextUser = {};
 array<string> ContextModel = {};
 
 dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 {
+  array<string> keys = api_keys.split(" ");
+  if (CurrentApiKey >= keys.length())
+  {
+    CurrentApiKey = 0;
+  }
+  HostPrintUTF8(formatUInt(CurrentApiKey) + " of " + formatUInt(keys.length()));
+  string api_key = keys[CurrentApiKey];
+  CurrentApiKey += 1;
+
   string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
   string prompt = current_prompt;
   string context = "";
@@ -287,7 +297,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   //HostPrintUTF8(Post);
 
   uintptr http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
-  string error = Model + ": ";
+  string error = Model + "[" + formatUInt(CurrentApiKey) + "]: ";
   if (http != 0)
   {
 		string json = HostGetContentHTTP(http);
@@ -339,7 +349,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 
 string Translate(string Text, string &in SrcLang, string &in DstLang)
 {
-  if (api_key.empty())
+  if (api_keys.empty())
   {
     return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";
   }
