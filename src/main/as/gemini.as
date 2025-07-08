@@ -252,7 +252,7 @@ array<string> GetDstLangs()
 
 string Untranslated = "";
 uint LastTime = 0;
-uint CurrentApiKey = 0;
+dictionary CurrentApiKey;
 uint Pause = DefaultPause;
 array<string> ContextUser = {};
 array<string> ContextModel = {};
@@ -260,13 +260,16 @@ array<string> ContextModel = {};
 dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 {
   array<string> keys = api_keys.split(" ");
-  if (CurrentApiKey >= keys.length())
+  if (!CurrentApiKey.exists(Model)) CurrentApiKey[Model] = 0;
+  uint keyIdx = uint(CurrentApiKey[Model]);
+  if (keyIdx >= keys.length())
   {
-    CurrentApiKey = 0;
+    CurrentApiKey[Model] = 0;
+    keyIdx = 0;
   }
-  HostPrintUTF8(Model + " " + formatUInt(CurrentApiKey) + " of " + formatUInt(keys.length()));
-  string api_key = keys[CurrentApiKey];
-  CurrentApiKey += 1;
+  HostPrintUTF8(Model + " " + formatUInt(keyIdx) + " of " + formatUInt(keys.length()));
+  string api_key = keys[keyIdx];
+  CurrentApiKey[Model] = keyIdx + 1;
 
   string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
   string prompt = current_prompt;
@@ -303,7 +306,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   //HostPrintUTF8(Post);
 
   uintptr http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
-  string error = Model + "[" + formatUInt(CurrentApiKey) + "]: ";
+  string error = Model + "[" + formatUInt(keyIdx) + "]: ";
   if (http != 0)
   {
 		string json = HostGetContentHTTP(http);
