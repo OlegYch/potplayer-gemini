@@ -7,17 +7,23 @@
 string default_prompt = "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation";
 // minimum milliseconds between translations, designed to keep api call rate under free tier limit
 // if you have paid tier you can set it to 0
+// #replaced by build
 uint DefaultPause = 300;
 // how much previous lines to pass to translation for improved understanding of the text
 // may quickly drain token quota, increase with care
+// #replaced by build
 uint MaxContextLines = 50;
-// gemini-2.0-flash is the default with highest quality, but limited to 15 translations per minute / 1500 per day in free tier
-// gemini-2.0-flash-lite is simpler, and limited to 30 translations per minute / 1500 per day in free tier
-string Model = "gemini-2.0-flash";
-string ModelFallback = "gemini-2.0-flash-lite";
+array<string> Models = {
+  "gemini-2.5-flash"
+  , "gemini-2.5-flash-lite-preview-06-17"
+  , "gemini-2.0-flash"
+  , "gemini-2.0-flash-lite"
+};
 
-string Name = "Gemini-Flash-Free";
+// #replaced by build
+string Name = "Gemini";
 
+// #replaced by build
 bool debug = false;
 
 // void OnInitialize()
@@ -216,7 +222,7 @@ string ServerLogin(string User, string Pass)
   else current_prompt = default_prompt;
 	api_keys = Pass;
 	if (api_keys.empty()) return "Empty API key";
-  dictionary result = CallGemini("Test", "English", "French", Model);
+  dictionary result = CallGemini("Test", "English", "French", Models[0]);
   string success = string(result['success']);
   string error = string(result['error']);
   if (!success.empty())
@@ -258,7 +264,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   {
     CurrentApiKey = 0;
   }
-  HostPrintUTF8(formatUInt(CurrentApiKey) + " of " + formatUInt(keys.length()));
+  HostPrintUTF8(Model + " " + formatUInt(CurrentApiKey) + " of " + formatUInt(keys.length()));
   string api_key = keys[CurrentApiKey];
   CurrentApiKey += 1;
 
@@ -384,20 +390,15 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   else
 	{
     LastTime = HostGetTickCount();
-		dictionary result = CallGemini(Text, SrcLang, DstLang, Model);
-		string success = string(result['success']);
-		if (success.empty())
-		{
-		  HostSleep(DefaultPause);
-		  result = CallGemini(Text, SrcLang, DstLang, Model);
+    string success = "";
+		string error = "";
+    int modelIdx = 0;
+    while (modelIdx < Models.length() && success.empty()) {
+  		dictionary result = CallGemini(Text, SrcLang, DstLang, Models[modelIdx]);
 		  success = string(result['success']);
-		  if (success.empty())
-		  {
-        result = CallGemini(Text, SrcLang, DstLang, ModelFallback);
-        success = string(result['success']);
-		  }
-		}
-		string error = string(result['error']);
+		  error = string(result['error']);
+      modelIdx++;
+    }
 		if (!success.empty())
 		{
 		  ret = success;

@@ -6,7 +6,7 @@ object Build {
   lazy val deploy       = taskKey[Unit]("deploy")
   lazy val deployTarget = settingKey[File]("potplayer dir")
 
-  case class Config(DefaultPause: Int, MaxContextLines: Int, Model: String, Name: String)
+  case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
 
   def settings = Seq(
     deployTarget                                  := file("""d:\program files\PotPlayer\"""),
@@ -25,14 +25,13 @@ object Build {
       val source     = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
       val configs = List(
-        Config(300, 50, "gemini-2.0-flash", "Gemini-Flash-Free"),
-        Config(0, 100, "gemini-2.0-flash", "Gemini-Flash-Paid"),
+        Config(300, 50, "Gemini-Free"),
+        Config(0, 100, "Gemini-Paid"),
       )
       val files = configs.flatMap { config =>
         val compiled = source
           .replaceFirst("uint DefaultPause =.*", "uint DefaultPause = " + config.DefaultPause + ";")
           .replaceFirst("uint MaxContextLines =.*", "uint MaxContextLines = " + config.MaxContextLines + ";")
-          .replaceFirst("string Model =.*", "string Model = \"" + config.Model + "\";")
           .replaceFirst("string Name =.*", "string Name = \"" + config.Name + "\";")
           .replaceFirst("bool debug =.*", "bool debug = " + debug + ";")
         val compiledAs = target / s"SubtitleTranslate - ${config.Name}.as"
