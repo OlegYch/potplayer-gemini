@@ -1,348 +1,426 @@
-Script engine is AngelScript(http://www.angelcode.com/angelscript/)
+//Script engine is AngelScript(http://www.angelcode.com/angelscript/);
+//
+class ref { };
+funcdef bool less(const ?&in a, const ?&in b);
+class array<T>{
+	uint length() const;
+	void resize(uint);
+	void reverse();
+	void insertAt(uint index, const T& in value);
+	void insertAt(uint index, const array<T>& arr);
+	void insertLast(const T& in);
+	void removeAt(uint index);
+	void removeLast();
+	void removeRange(uint start, uint count);
+	void sortAsc();
+	void sortAsc(uint startAt, uint count);
+	void sortDesc();
+	void sortDesc(uint startAt, uint count);
+	void sort(const less &in compareFunc, uint startAt = 0, uint count = uint(-1));
+	int find(const T& in);
+	int find(uint startAt, const T& in);
+	int findByRef(const T& in);
+	int findByRef(uint startAt, const T& in);
+	T opIndex(int idx) const;
+};
+class dictionary {
+	//Sets a key/value pair in the dictionary. If the key already exists, the value will be changed.
+    void set(const string&in key, ?&in value);
+    void set(const string&in key, int64&in value);
+    void set(const string&in key, double&in value);
+	//Retrieves the value corresponding to the key. The methods return false if the key is not found, and in this case the value will maintain its default value based on the type.
+    bool get(const string&in key, ?&out value) const;
+    bool get(const string&in key, int64&out value) const;
+    bool get(const string&in key, double&out value) const;
+	//This method returns an array with all of the existing keys in the dictionary. The order of the keys in the array is undefined.
+    array<string>@ getKeys() const;
+	//Returns true if the key exists in the dictionary.
+    bool exists(const string&in key) const;
+	//Removes the key and the corresponding value from the dictionary. Returns false if the key wasn't found.
+    bool delete(const string&in key);
+	//Removes all entries in the dictionary.
+    void deleteAll();
+	//Returns true if the dictionary doesn't hold any entries.
+    bool isEmpty() const;
+	//Returns the number of keys in the dictionary.
+    uint getSize() const;
+    dictionaryValue opIndex(string idx) const;
+};
+class dictionaryValue {
+    void opAssign(? v);
+};
+////------//------//------//------PotPlayer's builtin type//------//------//------//------//---------
+typedef int intptr;
+//	int pointer;
+
+typedef int uintptr;
+//	unsigned pointer;
+
+class string {
+    void string(? s);
+    int replace(const string&in from, const string&in to) const;
+    string Right(int Count) const;
+    string Left(int Count) const;
+    string TrimRight(const string&in str = "") const;
+    string TrimLeft(const string&in = "") const;
+    string Trim(const string&in = "") const;
+    string MakeLower() const;
+    string MakeUpper() const;
+    bool empty() const;
+    //Returns a copy of this string with the given string appended.;
+    string opAdd(const string& in szString) const;
+    void opAddAssign(const string& in szString);
+    uint length() const;
+    array<string>@ split(const string &in delimiter) const;
+    int findFirstOf(const string &in chars, int start = 0) const;
+    int findFirstNotOf(const string &in chars, int start = 0) const;
+    int findLastOf(const string &in chars, int start = -1) const;
+    int findLastNotOf(const string &in chars, int start = -1) const;
+    void erase(uint pos, int count = -1);
+    int findFirst(const string &in str, uint start = 0) const;
+    int findLast(const string &in str, int start = -1) const;
+    string substr(uint start = 0, int count = -1) const;
+    void insert(uint pos, const string &in other);
+};
+
+string join(const array<string> &in arr, const string &in delimiter);
+int64 parseInt(const string &in str, uint base = 10, uint &out byteCount = 0);
+uint64 parseUInt(const string &in str, uint base = 10, uint &out byteCount = 0);
+double parseFloat(const string &in, uint &out byteCount = 0);
+string formatInt(int64 val, const string &in options = '', uint width = 0);
+string formatUInt(uint64 val, const string &in options = '', uint width = 0);
+string formatFloat(double val, const string &in options = '', uint width = 0, uint precision = 0);
+
+////------//------//------//------PotPlayer's builtin API//------//------//------//------//----------
+
+int HostGetAPIVersion();
+//	Get API version
+
+void HostOpenConsole();
+//	Open debug console
+
+void HostPrintUTF8(const string&in);
+//	Print UTF8 string
 
-------------------------PotPlayer's builtin type---------------------------------
-intptr
-	int pointer
+void HostPrintUTF16(const string&in);
+//	Print UTF16 string
 
-uintptr
-	unsigned pointer
+string HostGetVersion();
+//	Get PotPlayer's version
 
-------------------------PotPlayer's builtin API----------------------------------
+bool HostCheckVersion(int major, int minor, int build);
+//	Check PotPlayer's version
 
-int HostGetAPIVersion()
-	Get API version
+bool HostIsWin64();
+//	Check PotPlayer is 64bit build or not
 
-void HostOpenConsole()
-	Open debug console
+void HostSleep(int ms);
+//	win32 API Sleep();
 
-void HostPrintUTF8(const string &in)
-	Print UTF8 string
+uint HostGetTickCount();
+//	win32 API GetTickCount();
 
-void HostPrintUTF16(const string &in)
-	Print UTF16 string
+void HostIncTimeOut(int ms);
+//	Increase function timeout time.
 
-string HostGetVersion()
-	Get PotPlayer's version
+bool HostCheckMediaFile(const string&in filename, bool Video, bool Audio, bool Playlist);
+//	Check filename is Video or Audio or Playlist
 
-bool HostCheckVersion(int major, int minor, int build)
-	Check PotPlayer's version
+string HostGetTempFolder();
+//	Get temp folder
 
-bool HostIsWin64()
-	Check PotPlayer is 64bit build or not
+string HostGetExtension(const string&in);
+//	Get file extension
 
-void HostSleep(int ms)
-	win32 API Sleep()
+string HostMBCSToUTF8(const string&in);
+//	Convert multibyte to UTF8
 
-uint HostGetTickCount()
-	win32 API GetTickCount()
+string HostMBCSToUTF16(const string&in);
+//	Convert multibyte to UTF16
 
-void HostIncTimeOut(int ms)
-	Increase function timeout time.
+string HostUTF8ToMBCS(const string&in);
+//	Convert UTF8 to multibyte
 
-bool HostCheckMediaFile(const string &in filename, bool Video, bool Audio, bool Playlist)
-	Check filename is Video or Audio or Playlist
+string HostUTF16ToMBCS(const string&in);
+//	Convert UTF16 to multibyte
 
-string HostGetTempFolder()
-	Get temp folder
+string HostUTF8ToUTF16(const string&in);
+//	Convert UTF8 to UTF16
 
-string HostGetExtension(const string &in)
-	Get file extension
+string HostUTF16ToUTF8(const string&in);
+//	Convert UTF16 to UTF8
 
-string HostMBCSToUTF8(const string &in)
-	Convert multibyte to UTF8
+string HostUrlGetString(const string&in url, const string&in UserAgent = "", const string&in Header = "", const string&in PostData = "", bool NoCookie = false);
+//	Get or Post HTTP(S) resource
 
-string HostMBCSToUTF16(const string &in)
-	Convert multibyte to UTF16
+string HostUrlGetStringWithAPI(const string&in url, const string&in UserAgent = "", const string&in Header = "", const string&in PostData = "", bool NoCookie = false);
+//	Get or Post HTTP(S) resource with API key
 
-string HostUTF8ToMBCS(const string &in)
-	Convert UTF8 to multibyte
+uintptr HostOpenHTTP(const string&in url, const string&in UserAgent = "", const string&in Header = "", const string&in PostData = "", bool NoCookie = false);
+//	Open Get or Post HTTP(S) resource
 
-string HostUTF16ToMBCS(const string &in)
-	Convert UTF16 to multibyte
+uintptr HostOpenHTTPWithAPI(const string&in url, const string&in UserAgent = "", const string&in Header = "", const string&in PostData = "", bool NoCookie = false);
+//	Open Get or Post HTTP(S) resource with API key
 
-string HostUTF8ToUTF16(const string &in)
-	Convert UTF8 to UTF16
+string HostGetContentHTTP(uintptr http);
+//	Get Content data
 
-string HostUTF16ToUTF8(const string &in)
-	Convert UTF16 to UTF8
+string HostGetHeaderHTTP(uintptr http);
+//	Get Header data
 
-string HostUrlGetString(const string &in url, const string &in UserAgent = "", const string &in Header = "", const string &in PostData = "", bool NoCookie = false)
-	Get or Post HTTP(S) resource
+int HostGetStatusHTTP(uintptr http);
+//	Get HTTP status code
 
-string HostUrlGetStringWithAPI(const string &in url, const string &in UserAgent = "", const string &in Header = "", const string &in PostData = "", bool NoCookie = false)
-	Get or Post HTTP(S) resource with API key
+void HostCloseHTTP(uintptr http);
+//	Close http
 
-uintptr HostOpenHTTP(const string &in url, const string &in UserAgent = "", const string &in Header = "", const string &in PostData = "", bool NoCookie = false)
-	Open Get or Post HTTP(S) resource
+uintptr HostFileOpen(const string&in filename);
+//	Open local file
 
-uintptr HostOpenHTTPWithAPI(const string &in url, const string &in UserAgent = "", const string &in Header = "", const string &in PostData = "", bool NoCookie = false)
-	Open Get or Post HTTP(S) resource with API key
+void HostFileClose(uintptr fp);
+//	Close local file
 
-string HostGetContentHTTP(uintptr http)
-	Get Content data
+int64 HostFileSeek(uintptr fp, int64 offset, int from = 0);
+//	Seek file's position
 
-string HostGetHeaderHTTP(uintptr http)
-	Get Header data
+int64 HostFileLength(uintptr fp);
+//	Get file length
 
-int HostGetStatusHTTP(uintptr http)
-	Get HTTP status code
+uint8 HostFileReadBYTE(uintptr fp);
+//	Read uint8
 
-void HostCloseHTTP(uintptr http)
-	Close http
+uint16 HostFileReadWORD(uintptr fp);
+//	Read uint16
 
-uintptr HostFileOpen(const string &in filename)
-	Open local file
+uint32 HostFileReadDWORD(uintptr fp);
+//	Read uint32
 
-void HostFileClose(uintptr fp)
-	Close local file
+uint64 HostFileReadQWORD(uintptr fp);
+//	Read uint64
 
-int64 HostFileSeek(uintptr fp, int64 offset, int from = 0)
-	Seek file's position
+string HostFileRead(uintptr fp, int len);
+//	Read string by len
 
-int64 HostFileLength(uintptr fp)
-	Get file length
+string HostUrlEncode(const string&in url);
+//	Encode Url escape
 
-uint8 HostFileReadBYTE(uintptr fp)
-	Read uint8
+string HostUrlDecode(const string&in url);
+//	Decode Url escape
 
-uint16 HostFileReadWORD(uintptr fp)
-	Read uint16
+string HostBase64Enc(const string&in data);
+//	Encode BASE 64
 
-uint32 HostFileReadDWORD(uintptr fp)
-	Read uint32
+string HostBase64Dec(const string&in data);
+//	Decode BASE 64
 
-uint64 HostFileReadQWORD(uintptr fp)
-	Read uint64
+string HostDecompress(const string&in data);
+//	Decompress data(zip or etc...);
 
-string HostFileRead(uintptr fp, int len)
-	Read string by len
+string HostGzipCompress(const string&in data);
+//	Compress Gzip
 
-string HostUrlEncode(const string &in url)
-	Encode Url escape
+string HostGzipDeflate(const string&in data);
+//	Compress Gzip Deflate
 
-string HostUrlDecode(const string &in url)
-	Decode Url escape
+string HostHashMD5(const string&in data);
+//	Get MD5
 
-string HostBase64Enc(const string &in data)
-	Encode BASE 64
+string HostHashSHA(const string&in data);
+//	Get SHA
 
-string HostBase64Dec(const string &in data)
-	Decode BASE 64
+string HostHashSHA1(const string&in data);
+//	Get SHA1
 
-string HostDecompress(const string &in data)
-	Decompress data(zip or etc...)
+string HostHashSHA256(const string&in data);
+//	Get SHA 256
 
-string HostGzipCompress(const string &in data)
-	Compress Gzip
+string HostHashSHA384(const string&in data);
+//	Get SHA 384
 
-string HostGzipDeflate(const string &in data)
-	Compress Gzip Deflate
+string HostHashSHA512(const string&in data);
+//	Get SHA 512
 
-string HostHashMD5(const string &in data)
-	Get MD5
+bool HostCompareMovieName(const string&in filename1, const string&in filename2);
+//	Compare filename1 with filename2
 
-string HostHashSHA(const string &in data)
-	Get SHA
+bool HostSaveString(const string&in key, const string&in val);
+//	Save key, value string to temp storage
 
-string HostHashSHA1(const string &in data)
-	Get SHA1
+string HostLoadString(const string&in key, const string&in def = "");
+//	Load temp key, value string from temp storage
 
-string HostHashSHA256(const string &in data)
-	Get SHA 256
+bool HostSaveInteger(const string&in key, int value);
+//	Save key, value integer to temp storage
 
-string HostHashSHA384(const string &in data)
-	Get SHA 384
+//string int HostLoadInteger(const string &in, int def = 0);
+//	Load temp key, value integer from temp storage
 
-string HostHashSHA512(const string &in data)
-	Get SHA 512
+string HostIso639LangName();
+//	Get current ISO639 Language name
 
-bool HostCompareMovieName(const string &in filename1, const string &in filename2)
-	Compare filename1 with filename2
+string HostIso3166CtryName();
+//	Get current ISO 3166 country name
 
-bool HostSaveString(const string &in key, const string &in val)
-	Save key, value string to temp storage
-
-string HostLoadString(const string &in key, const string &in def = "")
-	Load temp key, value string from temp storage
-
-bool HostSaveInteger(const string &in key, int value)
-	Save key, value integer to temp storage
-
-string int HostLoadInteger(const string &in, int def = 0)
-	Load temp key, value integer from temp storage
-
-string HostIso639LangName()
-	Get current ISO639 Language name
-
-string HostIso3166CtryName()
-	Get current ISO 3166 country name
-
-string HostRegExpParse(const string &in str, const string &in pattern)
-	const std::regex regex(pattern);
-	std::cmatch match;
-
-	if (std::regex_search(str, match, regex) && match.size() == 2)
-	{
-		return std::string(match[1].first, match[1].length());
-	}
-
-	return "";
-
-bool HostRegExpParse(const string &in str, const string &in pattern, array<dictionary> &dic)
-	const std::regex regex(pattern);
-	std::cmatch match;
-	bool ret = std::regex_search(str, match, regex);
-
-	if (ret)
-	{
-		assign match -> dic ...  "first" and "second"
-	}
-	return ret;
-
-string HostFixFileName(const string &in filename)
-	Fix file for create
-
-uintptr HostLoadLibrary(const string &in filename)
-	win32 API LoadLibrary()
-
-uintptr HostGetProcAddress(uintptr dll, const string &in symbol)
-	win32 API GetProcAddress()
-
-void HostFreeLibrary(uintptr dll)
-	win32 API FreeLibrary()
-
-void HostCallProcAsync(uintptr proc, const string &in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0)
-int HostCallProcInt(uintptr proc, const string &in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0)
-uintptr HostCallProcUIntPtr(uintptr proc, const string &in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0)
-uint64 HostCallProcUInt64(uintptr proc, const string &in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0)
-	call dll's function
-	paramSig -> P: Pointer, Q: int64, W: int16, B: int8, else int32  etc) "PQWI" -> Function(Pointer, int64, int16, int32);
-	HostCallProcAsync -> Async call
-
-uintptr HostInt2UIntPtr(const int &var)
-uintptr HostUInt2UIntPtr(const int &var)
-uintptr HostString2UIntPtr(const string &in var)
-	Get var's pointer
-
-string HostUIntPtr2String(uintptr ptr)
-	C string(char *) to script string
-
-void HostSetUrlUserAgentHTTP(const string &url, const string &userAgent)
-	Set useragent for HTTP url
-
-void HostSetUrlHeaderHTTP(const string &url, const string &header)
-	Set http header for HTTP url
-
-
-------------------------PotPlayer's builtin class----------------------------------
-------------------------string
-	int replace(const string &in from, const string &in to) const
-	string Right(int Count) const
-	string Left(int Count) const
-	string TrimRight(const string &in str = "") const
-	string TrimLeft(const string &in = "") const
-	string Trim(const string &in = "") const
-	string MakeLower() const
-	string MakeUpper() const
-
-
-------------------------jsoncpp
-------JsonValue
-	bool isNull()
-	bool isBool()
-	bool isInt()
-	bool isUInt()
-	bool isInt64()
-	bool isUInt64()
-	bool isFloat()
-	bool isDouble()
-	bool isNumeric()
-	bool isString()
-	bool isArray()
-	bool isObject()
-	bool canString()
-	int asInt()
-	uint asUInt()
-	int64 asInt64()
-	uint64 asUInt64()
-	float asFloat()
-	double asDouble()
-	bool asBool()
-	string asString()
-	int size()
-	array<string> @getKeys() const
-	[int]
-	[string]
-
-------JsonReader
-	bool parse(string &in json, JsonValue &out root)
-
-------------------------tinyxml2
-------XMLAttribute
-	bool isValid()
-	bool isBool()
-	bool isInt()
-	bool isUInt()
-	bool isInt64()
-	bool isDouble()
-	bool isFloat()
-	int asInt(int defaultValue = 0)
-	uint asUInt(uint defaultValue = 0)
-	int64 asInt64(int64 defaultValue = 0)
-	float asFloat(float defaultValue = 0)
-	double asDouble(double defaultValue = 0)
-	bool asBool(bool defaultValue = false)
-	string asString()
-	string Name()
-	string Value()
-	XMLAttribute Next()
-
-------XMLElement
-	bool isValid(const string &in name = "")
-	bool isBool(const string &in name = "")
-	bool isInt(const string &in name = "")
-	bool isUInt(const string &in name = "")
-	bool isInt64(const string &in name = "")
-	bool isDouble(const string &in name = "")
-	bool isFloat(const string &in name = "")
-	int asInt(const string &in name = "", int defaultValue = 0)
-	uint asUInt(const string &in name = "", uint defaultValue = 0)
-	int64 asInt64(const string &in name = "", int64 defaultValue = 0)
-	float asFloat(const string &in name = "", float defaultValue = 0)
-	double asDouble(const string &in name = "", double defaultValue = 0)
-	bool asBool(const string &in name = "", bool defaultValue = false)
-	string asString(const string &in name = "")
-	string Name()
-	string Value()
-	string Attribute(const string &in name, const string &in value = "")
-	XMLAttribute FindAttribute(const string &in name)
-	XMLAttribute FirstAttribute()
-	XMLElement FirstChildElement(const string &in name = "")
-	XMLElement NextSiblingElement()
-
-------XMLDocument
-	bool Parse(string &in xml)
-	XMLElement FirstChildElement(string &in name = "")
-	XMLElement RootElement()
-
-------------------------TimXmlRpc
-------XmlRpcValue
-	bool isNull()
-	bool isBool()
-	bool isInt()
-	bool isDouble()
-	bool isString()
-	bool isArray()
-	bool isObject()
-	bool canString()
-	int asInt()
-	double asDouble()
-	bool asBool()
-	string asString()
-	int size()
-	[int]
-	[string]
-
-------XmlRpcClient
-	bool execute(const string &in cmd, const XmlRpcValue &in param, XmlRpcValue &out result)
-
+string HostRegExpParse(const string&in str, const string&in pattern);
+//	const std::regex regex(pattern);
+//	std::cmatch match;
+//
+//	if (std::regex_search(str, match, regex) && match.size() == 2);
+//	{
+//		return std::string(match[1].first, match[1].length());
+//	}
+//
+//	return "";
+
+bool HostRegExpParse(const string&in str, const string&in pattern, array<dictionary>& dic);
+//	const std::regex regex(pattern);
+//	std::cmatch match;
+//	bool ret = std::regex_search(str, match, regex);
+//
+//	if (ret);
+//	{
+//		assign match -> dic ...  "first" and "second"
+//	}
+//	return ret;
+
+string HostFixFileName(const string&in filename);
+//	Fix file for create
+
+uintptr HostLoadLibrary(const string&in filename);
+//	win32 API LoadLibrary();
+
+uintptr HostGetProcAddress(uintptr dll, const string&in symbol);
+//	win32 API GetProcAddress();
+
+void HostFreeLibrary(uintptr dll);
+//	win32 API FreeLibrary();
+
+void HostCallProcAsync(uintptr proc, const string&in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0);
+int HostCallProcInt(uintptr proc, const string&in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0);
+uintptr HostCallProcUIntPtr(uintptr proc, const string&in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0);
+uint64 HostCallProcUInt64(uintptr proc, const string&in paramSig, uint64 param1 = 0, uint64 param2 = 0, uint64 param3 = 0, uint64 param4 = 0, uint64 param5 = 0, uint64 param6 = 0);
+//	call dll's function
+//	paramSig -> P: Pointer, Q: int64, W: int16, B: int8, else int32  etc) "PQWI" -> Function(Pointer, int64, int16, int32);
+//	HostCallProcAsync -> Async call
+
+uintptr HostInt2UIntPtr(const int& var);
+uintptr HostUInt2UIntPtr(const int& var);
+uintptr HostString2UIntPtr(const string&in var);
+//	Get var's pointer
+
+string HostUIntPtr2String(uintptr ptr);
+//	C string(char *) to script string
+
+void HostSetUrlUserAgentHTTP(const string& url, const string& userAgent);
+//	Set useragent for HTTP url
+
+void HostSetUrlHeaderHTTP(const string& url, const string& header);
+//	Set http header for HTTP url
+
+//------//------//------//------PotPlayer's builtin class//------//------//------//------//----------
+//------//------//------//------jsoncpp
+class JsonValue {
+    bool isNull();
+    bool isBool();
+    bool isInt();
+    bool isUInt();
+    bool isInt64();
+    bool isUInt64();
+    bool isFloat();
+    bool isDouble();
+    bool isNumeric();
+    bool isString();
+    bool isArray();
+    bool isObject();
+    bool canString();
+    int asInt();
+    uint asUInt();
+    int64 asInt64();
+    uint64 asUInt64();
+    float asFloat();
+    double asDouble();
+    bool asBool();
+    string asString();
+    int size();
+    array<string>@ getKeys() const;
+    JsonValue opIndex(int idx) const;
+    JsonValue opIndex(string idx) const;
+};
+
+class JsonReader {
+    bool parse(string&in json, JsonValue&out root);
+};
+
+//------//------//------//------tinyxml2
+class XMLAttribute {
+    bool isValid();
+    bool isBool();
+    bool isInt();
+    bool isUInt();
+    bool isInt64();
+    bool isDouble();
+    bool isFloat();
+    int asInt(int defaultValue = 0);
+    uint asUInt(uint defaultValue = 0);
+    int64 asInt64(int64 defaultValue = 0);
+    float asFloat(float defaultValue = 0);
+    double asDouble(double defaultValue = 0);
+    bool asBool(bool defaultValue = false);
+    string asString();
+    string Name();
+    string Value();
+    XMLAttribute Next();
+};
+
+class XMLElement {
+    bool isValid(const string&in name = "");
+    bool isBool(const string&in name = "");
+    bool isInt(const string&in name = "");
+    bool isUInt(const string&in name = "");
+    bool isInt64(const string&in name = "");
+    bool isDouble(const string&in name = "");
+    bool isFloat(const string&in name = "");
+    int asInt(const string&in name = "", int defaultValue = 0);
+    uint asUInt(const string&in name = "", uint defaultValue = 0);
+    int64 asInt64(const string&in name = "", int64 defaultValue = 0);
+    float asFloat(const string&in name = "", float defaultValue = 0);
+    double asDouble(const string&in name = "", double defaultValue = 0);
+    bool asBool(const string&in name = "", bool defaultValue = false);
+    string asString(const string&in name = "");
+    string Name();
+    string Value();
+    string Attribute(const string&in name, const string&in value = "");
+    XMLAttribute FindAttribute(const string&in name);
+    XMLAttribute FirstAttribute();
+    XMLElement FirstChildElement(const string&in name = "");
+    XMLElement NextSiblingElement();
+};
+
+class XMLDocument {
+    bool Parse(string&in xml);
+    XMLElement FirstChildElement(string&in name = "");
+    XMLElement RootElement();
+};
+
+//------//------//------//------TimXmlRpc
+class XmlRpcValue {
+    bool isNull();
+    bool isBool();
+    bool isInt();
+    bool isDouble();
+    bool isString();
+    bool isArray();
+    bool isObject();
+    bool canString();
+    int asInt();
+    double asDouble();
+    bool asBool();
+    string asString();
+    int size();
+    XmlRpcValue opIndex(int idx) const;
+    XmlRpcValue opIndex(string idx) const;
+};
+
+class XmlRpcClient {
+    bool execute(const string&in cmd, const XmlRpcValue&in param, XmlRpcValue&out result);
+};
