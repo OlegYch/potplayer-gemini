@@ -253,6 +253,7 @@ array<string> GetDstLangs()
 string Untranslated = "";
 uint LastTime = 0;
 dictionary CurrentApiKey;
+dictionary ModelDelay;
 uint Pause = DefaultPause;
 array<string> ContextUser = {};
 array<string> ContextModel = {};
@@ -261,6 +262,8 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 {
   array<string> keys = api_keys.split(" ");
   if (!CurrentApiKey.exists(Model)) CurrentApiKey[Model] = 0;
+  uint CallTime = HostGetTickCount();
+  ModelDelay[Model] = 100500; //default to very long time if the call is aborted
   uint keyIdx = uint(CurrentApiKey[Model]);
   if (keyIdx >= keys.length())
   {
@@ -312,6 +315,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 		string json = HostGetContentHTTP(http);
     string headers = HostGetHeaderHTTP(http);
 		HostCloseHTTP(http);
+		ModelDelay[Model] = HostGetTickCount() - CallTime;
 		//HostPrintUTF8(json);
 		//HostPrintUTF8(headers);
     JsonReader Reader;
@@ -397,9 +401,20 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
 		string error = "";
     int modelIdx = 0;
     while (modelIdx < Models.length() && success.empty()) {
-  		dictionary result = CallGemini(Text, SrcLang, DstLang, Models[modelIdx]);
-		  success = string(result['success']);
-		  error = string(result['error']);
+      string Model = Models[modelIdx];
+      uint delay = uint(ModelDelay[Model]);
+      HostPrintUTF8("Current delay for model " + Model + ": " + formatUInt(delay));
+      //skip model if it takes too long
+      if (delay > 1000)
+      {
+        ModelDelay[Model] = 0;
+      }
+      else
+      {
+        dictionary result = CallGemini(Text, SrcLang, DstLang, Model);
+        success = string(result['success']);
+        error = string(result['error']);
+      }
       modelIdx++;
     }
 		if (!success.empty())

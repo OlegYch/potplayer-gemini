@@ -71,25 +71,25 @@ class string {
     string opAdd(const string& in szString) const;
     void opAddAssign(const string& in szString);
     uint length() const;
-    array<string>@ split(const string &in delimiter) const;
-    int findFirstOf(const string &in chars, int start = 0) const;
-    int findFirstNotOf(const string &in chars, int start = 0) const;
-    int findLastOf(const string &in chars, int start = -1) const;
-    int findLastNotOf(const string &in chars, int start = -1) const;
+    array<string>@ split(const string&in delimiter) const;
+    int findFirstOf(const string&in chars, int start = 0) const;
+    int findFirstNotOf(const string&in chars, int start = 0) const;
+    int findLastOf(const string&in chars, int start = -1) const;
+    int findLastNotOf(const string&in chars, int start = -1) const;
     void erase(uint pos, int count = -1);
-    int findFirst(const string &in str, uint start = 0) const;
-    int findLast(const string &in str, int start = -1) const;
+    int findFirst(const string&in str, uint start = 0) const;
+    int findLast(const string&in str, int start = -1) const;
     string substr(uint start = 0, int count = -1) const;
-    void insert(uint pos, const string &in other);
+    void insert(uint pos, const string&in other);
 };
 
-string join(const array<string> &in arr, const string &in delimiter);
-int64 parseInt(const string &in str, uint base = 10, uint &out byteCount = 0);
-uint64 parseUInt(const string &in str, uint base = 10, uint &out byteCount = 0);
-double parseFloat(const string &in, uint &out byteCount = 0);
-string formatInt(int64 val, const string &in options = '', uint width = 0);
-string formatUInt(uint64 val, const string &in options = '', uint width = 0);
-string formatFloat(double val, const string &in options = '', uint width = 0, uint precision = 0);
+string join(const array<string>&in arr, const string&in delimiter);
+int64 parseInt(const string&in str, uint base = 10, uint&out byteCount = 0);
+uint64 parseUInt(const string&in str, uint base = 10, uint&out byteCount = 0);
+double parseFloat(const string&in, uint&out byteCount = 0);
+string formatInt(int64 val, const string&in options = '', uint width = 0);
+string formatUInt(uint64 val, const string&in options = '', uint width = 0);
+string formatFloat(double val, const string&in options = '', uint width = 0, uint precision = 0);
 
 ////------//------//------//------PotPlayer's builtin API//------//------//------//------//----------
 
