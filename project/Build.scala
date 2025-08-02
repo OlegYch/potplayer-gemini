@@ -14,11 +14,12 @@ object Build {
     Compile / Keys.packageBin / Keys.artifactName := ((_, _, _) => "potplayer-gemini.zip"),
     Compile / Keys.productDirectories             := Seq(file("target/potplayer-gemini")),
     Compile / Keys.products := {
-      build.value
-      (Compile / Keys.productDirectories).value
+      build.value ++
+        (Compile / Keys.productDirectories).value
     },
     Compile / Keys.unmanagedSourceDirectories            := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
+    Compile / Keys.packageTimestamp                      := None,
     build := {
       val debug      = deployTarget.value.exists()
       val target     = (Compile / Keys.productDirectories).value.head
