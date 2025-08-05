@@ -263,7 +263,12 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   array<string> keys = api_keys.split(" ");
   if (!CurrentApiKey.exists(Model)) CurrentApiKey[Model] = 0;
   uint CallTime = HostGetTickCount();
-  ModelDelay[Model] = 10000; //default to very long time if the call is aborted or fails
+  uint oldDelay = uint(ModelDelay[Model]);
+  if (oldDelay == 0)
+  {
+    oldDelay = 10000; //model never succeeded
+  };
+  ModelDelay[Model] = 10000; //default to very long time if the call is aborted
   uint keyIdx = uint(CurrentApiKey[Model]);
   if (keyIdx >= keys.length())
   {
@@ -315,6 +320,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 		string json = HostGetContentHTTP(http);
     string headers = HostGetHeaderHTTP(http);
 		HostCloseHTTP(http);
+		uint newDelay = HostGetTickCount() - CallTime;
 		//HostPrintUTF8(json);
 		//HostPrintUTF8(headers);
     JsonReader Reader;
@@ -339,23 +345,26 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
         ContextModel.insertLast(ret);
         ret += "\n";
         //HostPrintUTF8(ret);
-    		ModelDelay[Model] = HostGetTickCount() - CallTime;
+    		ModelDelay[Model] = newDelay;
         return {{'success', ret}};
       }
       else
       {
         error += Root["error"]["message"].asString();
         HostPrintUTF8(error);
+        ModelDelay[Model] = oldDelay > newDelay ? oldDelay : newDelay;
         return {{'error', error}};
       }
     }
     else
     {
+      ModelDelay[Model] = oldDelay > newDelay ? oldDelay : newDelay;
       return {{'error', error + "Can't parse " + json}};
     }
   }
   else
   {
+    ModelDelay[Model] = oldDelay;
     return {{'error', error + "Can't open http connection"}};
   }
 }
