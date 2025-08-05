@@ -16,7 +16,7 @@ uint MaxContextLines = 50;
 array<string> Models = {
   "gemini-2.5-flash"
   , "gemini-2.0-flash"
-  , "gemini-2.5-flash-lite-preview-06-17"
+  , "gemini-2.5-flash-lite"
   , "gemini-2.0-flash-lite"
 };
 
@@ -408,7 +408,7 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
     LastTime = HostGetTickCount();
     string success = "";
 		string error = "";
-    int modelIdx = 0;
+    uint modelIdx = 0;
     while (modelIdx < Models.length() && success.empty()) {
       string Model = Models[modelIdx];
       uint delay = uint(ModelDelay[Model]);
