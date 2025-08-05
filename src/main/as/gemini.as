@@ -263,7 +263,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   array<string> keys = api_keys.split(" ");
   if (!CurrentApiKey.exists(Model)) CurrentApiKey[Model] = 0;
   uint CallTime = HostGetTickCount();
-  ModelDelay[Model] = 100500; //default to very long time if the call is aborted
+  ModelDelay[Model] = 10000; //default to very long time if the call is aborted or fails
   uint keyIdx = uint(CurrentApiKey[Model]);
   if (keyIdx >= keys.length())
   {
@@ -315,7 +315,6 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 		string json = HostGetContentHTTP(http);
     string headers = HostGetHeaderHTTP(http);
 		HostCloseHTTP(http);
-		ModelDelay[Model] = HostGetTickCount() - CallTime;
 		//HostPrintUTF8(json);
 		//HostPrintUTF8(headers);
     JsonReader Reader;
@@ -340,6 +339,7 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
         ContextModel.insertLast(ret);
         ret += "\n";
         //HostPrintUTF8(ret);
+    		ModelDelay[Model] = HostGetTickCount() - CallTime;
         return {{'success', ret}};
       }
       else
@@ -407,7 +407,7 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
       //skip model if it takes too long
       if (delay > 1000)
       {
-        ModelDelay[Model] = 0;
+        ModelDelay[Model] = delay / 2;
       }
       else
       {
