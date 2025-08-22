@@ -26,6 +26,9 @@ string Name = "Gemini";
 // #replaced by build
 bool debug = false;
 
+// skip model if it takes too long to respond
+uint MaxDelay = 3000;
+
 // void OnInitialize()
 // void OnFinalize()
 // string GetTitle() 														-> get title for UI
@@ -413,8 +416,7 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
       string Model = Models[modelIdx];
       uint delay = uint(ModelDelay[Model]);
       HostPrintUTF8("Current delay for model " + Model + ": " + formatUInt(delay));
-      //skip model if it takes too long
-      if (delay > 1000)
+      if (delay > MaxDelay)
       {
         ModelDelay[Model] = delay / 2;
       }
