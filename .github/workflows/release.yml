@@ -27,7 +27,11 @@ jobs:
 
       - name: Install vcpkg dependencies
         id: vcpkg
-        uses: lukka/vcpkg-action@v4
+        uses: johnwason/vcpkg-action@v7
+        with:
+          manifest-dir: ${{ github.workspace }} # Set to directory containing vcpkg.json
+          triplet: x64-windows-release
+          token: ${{ github.token }}
 
       - name: Build release
         run: sbt 'package;app/run'
