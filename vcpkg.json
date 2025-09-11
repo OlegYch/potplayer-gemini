@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "curl",
+    "libidn2"
+  ],
+  "builtin-baseline": "7e19f3c64cb636ee21f41bfe8558a6dfaae6236f"
+}

@@ -1,5 +1,6 @@
 import sbt.*
 import sbt.Keys
+import sbt.Keys.*
 
 object Build {
   lazy val build        = taskKey[Seq[File]]("build")
@@ -49,6 +50,37 @@ object Build {
       import scala.sys.process.*
       (deployTarget.value / "KillPot64.exe").absolutePath.!
       (deployTarget.value / "PotPlayerMini64.exe").absolutePath.run()
+    },
+  )
+
+  import scala.scalanative.build.*
+  import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.*
+  def librarySettings = Seq(
+    scalaVersion := "3.7.3",
+    nativeConfig := {
+      val c = nativeConfig.value
+      c.withLTO(LTO.none)     // thin
+        .withMode(Mode.debug) // releaseFast
+        .withGC(GC.immix)     // commix
+        .withCompileOptions(
+          _ ++ Seq(
+            s"-static",
+            "-D_CRT_SECURE_NO_WARNINGS=1",
+            "-Wno-macro-redefined",
+            s"-I${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/include",
+          )
+        )
+        .withLinkingOptions(
+          _ ++ Seq(
+            s"-static",
+            s"-llibcurl",
+            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/lib",
+            s"-lidn2",
+            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/libidn2_x64-windows/lib",
+            s"-lunistring",
+            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/libunistring_x64-windows/lib",
+          )
+        )
     },
   )
 }

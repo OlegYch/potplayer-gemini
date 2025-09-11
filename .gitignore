@@ -47,3 +47,4 @@ build/
 .bsp/
 
 .idea
+vcpkg_installed

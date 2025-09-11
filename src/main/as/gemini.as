@@ -374,6 +374,11 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 
 string Translate(string Text, string &in SrcLang, string &in DstLang)
 {
+  uintptr lib = HostLoadLibrary("library.dll");
+  HostPrintUTF8(formatUInt(lib));
+  uintptr sayHello = HostGetProcAddress(lib, "sayHello");
+  HostPrintUTF8(formatUInt(sayHello));
+  HostCallProcAsync(sayHello, "");
   if (api_keys.empty())
   {
     return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";

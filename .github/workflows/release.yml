@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: windows-latest
     name: Release
     steps:
       - name: Checkout
@@ -25,8 +25,12 @@ jobs:
       - name: Checkout current
         run: git checkout . && git clean -df
 
+      - name: Install vcpkg dependencies
+        id: vcpkg
+        uses: lukka/vcpkg-action@v4
+
       - name: Build release
-        run: sbt package
+        run: sbt 'package;app/run'
 
       - name: Release
         uses: softprops/action-gh-release@v2
