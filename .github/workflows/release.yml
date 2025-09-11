@@ -25,13 +25,13 @@ jobs:
       - name: Checkout current
         run: git checkout . && git clean -df
 
-      - name: Install vcpkg dependencies
-        id: vcpkg
-        uses: johnwason/vcpkg-action@v7
-        with:
-          manifest-dir: ${{ github.workspace }} # Set to directory containing vcpkg.json
-          triplet: x64-windows-release
-          token: ${{ github.token }}
+      - name: Install Packages
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          bootstrap-vcpkg.sh
+          cd ..
+          vcpkg install
 
       - name: Build release
         run: sbt 'package;app/run'
