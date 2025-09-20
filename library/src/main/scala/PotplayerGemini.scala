@@ -8,13 +8,14 @@ object PotplayerGemini {
   def add(a: Int, b: Int): Int = a + b
 
   @exported
-  def sayHello(): Thread = {
-    val t = new Thread({ () =>
-      Thread.sleep(1000)
-      println("Hello from Scala Native DLL!")
-    })
-    t.start
-    t
+  def sayHello(i: Int): Int = {
+//    val t = new Thread({ () =>
+//      Thread.sleep(1000)
+    println(s"Hello from Scala Native DLL! ${i}")
+//    })
+//    t.start
+//    t
+    i + 2
   }
   @exported
   def translate(Text: String) = {

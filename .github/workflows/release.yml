@@ -29,14 +29,14 @@ jobs:
       - name: Cache SBT
         uses: actions/cache@v4
         with:
-          path: ~/.sbt
+          path: %userprofile%\.sbt
           key: ${{ runner.os }}-sbt-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-sbt-
 
       - name: Cache coursier cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/coursier
+          path: %LOCALAPPDATA%\coursier
           key: ${{ runner.os }}-coursier-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-coursier-
 
@@ -53,21 +53,20 @@ jobs:
       - name: Install Packages
         run: .\vcpkg-install.bat
 
-#      - name: Build release
-#        run: sbt 'package;app/run'
+      - name: Build release
+        run: sbt 'package;app/run'
 
-#      - name: Release
-#        uses: softprops/action-gh-release@v2
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          files: target/out/*/*/potplayer-gemini/potplayer-gemini.zip
-#          generate_release_notes: true
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: target/out/*/*/potplayer-gemini/potplayer-gemini.zip
+          generate_release_notes: true
 
-#      - name: Clean caches
-#        run: |
-#          find ~/.sbt        -name "*.lock"               -print -delete
-#          rm -rf ./.git
-#          rm -rf ./project/target #clean doesn't clean meta-build
+      - name: Clean caches
+        run: |
+          Remove-Item .\.git -Recurse 
+          Remove-Item .\.project\target -Recurse 
 
 permissions:
   contents: write

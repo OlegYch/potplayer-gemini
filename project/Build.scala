@@ -2,29 +2,33 @@ import sbt.*
 import sbt.Keys
 import sbt.Keys.*
 
+import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.nativeLink
+
 object Build {
-  lazy val build        = taskKey[Seq[File]]("build")
-  lazy val deploy       = taskKey[Unit]("deploy")
+  lazy val build = taskKey[Seq[File]]("build")
+  lazy val deploy = taskKey[Unit]("deploy")
   lazy val deployTarget = settingKey[File]("potplayer dir")
 
   case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
 
-  def settings = Seq(
-    deployTarget                                  := file("""d:\program files\PotPlayer\"""),
-    Compile / Keys.compile / Keys.skip            := true,
+  val libs = Seq(
+    ("libcurl", "curl", "libcurl.dll"),
+    ("idn2", "libidn2", "idn2-0.dll"),
+    ("unistring", "libunistring", "unistring-5.dll"),
+  )
+
+  def settings(library: Project) = Seq(
+    deployTarget := file("""d:\program files\PotPlayer\"""),
+    Compile / Keys.compile / Keys.skip := true,
     Compile / Keys.packageBin / Keys.artifactName := ((_, _, _) => "potplayer-gemini.zip"),
-    Compile / Keys.productDirectories             := Seq(file("target/potplayer-gemini")),
-    Compile / Keys.products := {
-      build.value ++
-        (Compile / Keys.productDirectories).value
-    },
-    Compile / Keys.unmanagedSourceDirectories            := Seq((Compile / Keys.sourceDirectory).value / "as"),
+    Compile / Keys.packageBin / Keys.mappings := build.value.map(f => f -> f.name),
+    Compile / Keys.unmanagedSourceDirectories := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
-    Compile / Keys.packageTimestamp                      := None,
+    Compile / Keys.packageTimestamp := None,
     build := {
-      val debug      = deployTarget.value.exists()
-      val target     = (Compile / Keys.productDirectories).value.head
-      val source     = IO.read((Compile / Keys.sources).value.head)
+      val debug = deployTarget.value.exists()
+      val target = (Compile / Keys.productDirectories).value.head
+      val source = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
       val configs = List(
         Config(300, 50, "Gemini-Free"),
@@ -42,44 +46,51 @@ object Build {
         IO.copyFile(sourceIcon, compiledIcon)
         Seq(compiledAs, compiledIcon)
       }
-      files
+      val base = (ThisBuild / baseDirectory).value.absolutePath
+      val lib = Seq((library / Compile / nativeLink).value) ++ libs.map {
+        case (_, path, dll) =>
+          file(s"$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/bin/$dll")
+      }
+      files ++ lib
     },
     deploy := {
-      val built = build.value
-      IO.copy(built.map(f => (f, deployTarget.value / "Extension/Subtitle/Translate" / f.name)), CopyOptions().withOverwrite(true))
       import scala.sys.process.*
+      val built = build.value
       (deployTarget.value / "KillPot64.exe").absolutePath.!
+      IO.copy(built.map(f => (f, deployTarget.value / "Extension/Subtitle/Translate" / f.name)), CopyOptions().withOverwrite(true))
       (deployTarget.value / "PotPlayerMini64.exe").absolutePath.run()
     },
   )
 
   import scala.scalanative.build.*
   import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.*
+
   def librarySettings = Seq(
     scalaVersion := "3.7.3",
     nativeConfig := {
       val c = nativeConfig.value
-      c.withLTO(LTO.none)     // thin
+      val base = (ThisBuild / baseDirectory).value.absolutePath
+      c.withLTO(LTO.none) // thin
         .withMode(Mode.debug) // releaseFast
-        .withGC(GC.immix)     // commix
+        .withGC(GC.immix) // commix
         .withCompileOptions(
           _ ++ Seq(
             s"-static",
             "-D_CRT_SECURE_NO_WARNINGS=1",
             "-Wno-macro-redefined",
-            s"-I${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/include",
+            s"-I$base/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/include",
           )
         )
         .withLinkingOptions(
           _ ++ Seq(
             s"-static",
-            s"-llibcurl",
-            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/lib",
-            s"-lidn2",
-            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/libidn2_x64-windows/lib",
-            s"-lunistring",
-            s"-L${(ThisBuild / baseDirectory).value.absolutePath}/vcpkg_installed/vcpkg/pkgs/libunistring_x64-windows/lib",
-          )
+          ) ++ libs.flatMap {
+            case (name, path, _) =>
+              Seq(
+                s"-l$name",
+                s"-L$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/lib",
+              )
+          }
         )
     },
   )

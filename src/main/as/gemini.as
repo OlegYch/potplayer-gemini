@@ -1,4 +1,5 @@
-﻿/*
+﻿
+/*
 	real time subtitle translate for PotPlayer using Gemini 2.0 API
 	https://ai.google.dev/api/generate-content#v1beta.models.generateContent
 */
@@ -374,11 +375,18 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
 
 string Translate(string Text, string &in SrcLang, string &in DstLang)
 {
-  uintptr lib = HostLoadLibrary("library.dll");
+  uintptr lib1 = HostLoadLibrary("unistring-5.dll");
+  uintptr lib2 = HostLoadLibrary("idn2-0.dll");
+  uintptr lib3 = HostLoadLibrary("libcurl.dll");
+  HostPrintUTF8(formatUInt(lib1));
+  HostPrintUTF8(formatUInt(lib2));
+  HostPrintUTF8(formatUInt(lib3));
+  uintptr lib = HostLoadLibrary("potplayer-gemini-library.dll");
   HostPrintUTF8(formatUInt(lib));
   uintptr sayHello = HostGetProcAddress(lib, "sayHello");
   HostPrintUTF8(formatUInt(sayHello));
-  HostCallProcAsync(sayHello, "");
+  uint64 res = HostCallProcUInt64(sayHello, "i", Text.length());
+  HostPrintUTF8(formatUInt(res));
   if (api_keys.empty())
   {
     return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";
