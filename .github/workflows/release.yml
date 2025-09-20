@@ -17,21 +17,36 @@ jobs:
         with:
           java-version: 21
           distribution: adopt
-          cache: sbt
 
       - name: Set up SBT
         uses: sbt/setup-sbt@v1
+
+      - name: Cache SBT
+        uses: actions/cache@v4
+        with:
+          path: ~/.sbt
+          key: ${{ runner.os }}-sbt-${{ github.run_number }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache coursier cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/coursier
+          key: ${{ runner.os }}-coursier-${{ github.run_number }}
+          restore-keys: ${{ runner.os }}-coursier-
+
+      - name: Cache project
+        uses: actions/cache@v4
+        with:
+          path: ./
+          key: ${{ runner.os }}-project-${{ github.run_number }}
+          restore-keys: ${{ runner.os }}-project-
 
       - name: Checkout current
         run: git checkout . && git clean -df
 
       - name: Install Packages
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          bootstrap-vcpkg.bat
-          cd ..
-          vcpkg install
+        run: vcpkg-install.bat
 
       - name: Build release
         run: sbt 'package;app/run'
