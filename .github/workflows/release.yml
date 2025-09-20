@@ -12,6 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "20.1.4"
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -48,8 +53,8 @@ jobs:
       - name: Install Packages
         run: .\vcpkg-install.bat
 
-      - name: Build release
-        run: sbt 'package;app/run'
+#      - name: Build release
+#        run: sbt 'package;app/run'
 
       - name: Release
         uses: softprops/action-gh-release@v2
