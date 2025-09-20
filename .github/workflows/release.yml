@@ -29,14 +29,14 @@ jobs:
       - name: Cache SBT
         uses: actions/cache@v4
         with:
-          path: %userprofile%\.sbt
+          path: '%userprofile%\.sbt'
           key: ${{ runner.os }}-sbt-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-sbt-
 
       - name: Cache coursier cache
         uses: actions/cache@v4
         with:
-          path: %LOCALAPPDATA%\coursier
+          path: '%LOCALAPPDATA%\coursier'
           key: ${{ runner.os }}-coursier-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-coursier-
 
