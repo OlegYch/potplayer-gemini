@@ -46,7 +46,7 @@ jobs:
         run: git checkout . && git clean -df
 
       - name: Install Packages
-        run: vcpkg-install.bat
+        run: .\vcpkg-install.bat
 
       - name: Build release
         run: sbt 'package;app/run'
