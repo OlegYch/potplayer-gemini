@@ -56,18 +56,18 @@ jobs:
 #      - name: Build release
 #        run: sbt 'package;app/run'
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: target/out/*/*/potplayer-gemini/potplayer-gemini.zip
-          generate_release_notes: true
+#      - name: Release
+#        uses: softprops/action-gh-release@v2
+#        if: startsWith(github.ref, 'refs/tags/')
+#        with:
+#          files: target/out/*/*/potplayer-gemini/potplayer-gemini.zip
+#          generate_release_notes: true
 
-      - name: Clean caches
-        run: |
-          find ~/.sbt        -name "*.lock"               -print -delete
-          rm -rf ./.git
-          rm -rf ./project/target #clean doesn't clean meta-build
+#      - name: Clean caches
+#        run: |
+#          find ~/.sbt        -name "*.lock"               -print -delete
+#          rm -rf ./.git
+#          rm -rf ./project/target #clean doesn't clean meta-build
 
 permissions:
   contents: write
