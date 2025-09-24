@@ -29,7 +29,7 @@ class Gemini {
 
   case class GeminiResponse(candidates: Seq[Candidate]) derives Encoder.AsObject, Decoder
   case class Candidate(content: Content) derives Encoder.AsObject, Decoder
-  
+
   val defaultPrompt =
     "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation"
 
@@ -48,12 +48,12 @@ class Gemini {
     val start = System.currentTimeMillis()
     f.map(_ -> Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS))
   }
-  private def firstSuccess[T](f: List[Future[T]]): Future[T] = f match {
-    case _ :: tail =>
+  private def firstSuccess[T](f: List[Future[T]]): Future[T] = {
+    if (f.isEmpty) Future.failed(new Exception("couldn't find success"))
+    else
       Future.firstCompletedOf(f).recoverWith { case e =>
-        firstSuccess(tail)
+        firstSuccess(f.filterNot(_.value.exists(_.isFailure)))
       }
-    case Nil => Future.failed(new Exception("couldn't find success") with scala.util.control.NoStackTrace)
   }
   @transient private var untranslated = Vector[String]()
   @transient private var context      = Vector[(String, String)]()
