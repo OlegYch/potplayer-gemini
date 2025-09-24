@@ -47,13 +47,23 @@ jobs:
           key: ${{ runner.os }}-project-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-project-
 
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: '%LOCALAPPDATA%\vcpkg'
+          key: ${{ runner.os }}-vcpkg-${{ github.run_number }}
+          restore-keys: ${{ runner.os }}-vcpkg-
+
       - name: Checkout current
+        shell: cmd
         run: git checkout . && git clean -df
 
       - name: Install Packages
+        shell: cmd
         run: .\vcpkg-install.bat
 
       - name: Build release
+        shell: cmd
         run: sbt 'libraryJVM/test;package'
         env:
           GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
@@ -66,9 +76,10 @@ jobs:
           generate_release_notes: true
 
       - name: Clean caches
+        shell: cmd
         run: |
-          Remove-Item .\.git -Recurse 
-          Remove-Item .\.project\target -Recurse 
+          rmdir /s /q .\.git
+          rmdir /s /q .\project\target 
 
 permissions:
   contents: write
