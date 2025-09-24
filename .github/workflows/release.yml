@@ -54,7 +54,9 @@ jobs:
         run: .\vcpkg-install.bat
 
       - name: Build release
-        run: sbt 'package;app/run'
+        run: sbt 'libraryJVM/test;package'
+        env:
+          GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
 
       - name: Release
         uses: softprops/action-gh-release@v2

@@ -1,3 +1,4 @@
+-J-Xmx1000m
 -J-Dfile.encoding=UTF-8
 -J-Dsun.jnu.encoding=UTF-8
 -J-Dnative.encoding=UTF-8

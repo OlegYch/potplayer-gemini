@@ -1,4 +1,4 @@
-﻿
+
 /*
 	real time subtitle translate for PotPlayer using Gemini 2.0 API
 	https://ai.google.dev/api/generate-content#v1beta.models.generateContent
@@ -26,6 +26,9 @@ string Name = "Gemini";
 
 // #replaced by build
 bool debug = false;
+
+// #replaced by build
+array<string> libs = {};
 
 // skip model if it takes too long to respond
 uint MaxDelay = 3000;
@@ -226,16 +229,14 @@ string ServerLogin(string User, string Pass)
   else current_prompt = default_prompt;
 	api_keys = Pass;
 	if (api_keys.empty()) return "Empty API key";
-  dictionary result = CallGemini("Test", "English", "French", Models[0]);
-  string success = string(result['success']);
-  string error = string(result['error']);
-  if (!success.empty())
+  //string result = Translate("Hello", "English", "French");
+  //if (!result.empty())
   {
   	return "200 ok";
   }
-  else
+  // else
   {
-    return error;
+    //return result;
   }
 }
 
@@ -373,27 +374,14 @@ dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
   }
 }
 
+uintptr lib;
 string Translate(string Text, string &in SrcLang, string &in DstLang)
 {
-  uintptr lib1 = HostLoadLibrary("unistring-5.dll");
-  uintptr lib2 = HostLoadLibrary("idn2-0.dll");
-  uintptr lib3 = HostLoadLibrary("libcurl.dll");
-  HostPrintUTF8(formatUInt(lib1));
-  HostPrintUTF8(formatUInt(lib2));
-  HostPrintUTF8(formatUInt(lib3));
-  uintptr lib = HostLoadLibrary("potplayer-gemini-library.dll");
-  HostPrintUTF8(formatUInt(lib));
-  uintptr sayHello = HostGetProcAddress(lib, "sayHello");
-  HostPrintUTF8(formatUInt(sayHello));
-  uint64 res = HostCallProcUInt64(sayHello, "i", Text.length());
-  HostPrintUTF8(formatUInt(res));
+  if (debug) HostOpenConsole();
   if (api_keys.empty())
   {
     return "Please get an API key at https://aistudio.google.com/app/apikey and configure subtitle translation settings.";
   }
-  if (debug) HostOpenConsole();
-//HostPrintUTF8(Untranslated + "---");
-//HostPrintUTF8(Text);
   for ( uint i = 0; i < LangTable.length(); i++)
   {
     string short = LangTable[i][0];
@@ -401,6 +389,23 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   	if (SrcLang == short) SrcLang = full;
 	  if (DstLang == short) DstLang = full;
   }
+  if (lib == 0)
+  {
+    for ( uint i = 0; i < libs.length(); i++)
+    {
+      lib = HostLoadLibrary(libs[i]);
+      HostPrintUTF8(libs[i] + ": " + formatUInt(lib));
+    }
+  }
+  uintptr translate = HostGetProcAddress(lib, "translate");
+  HostPrintUTF8(formatUInt(translate));
+  uintptr res = HostCallProcUIntPtr(translate, "ppppp", HostString2UIntPtr(Text), HostString2UIntPtr(current_prompt), HostString2UIntPtr(SrcLang), HostString2UIntPtr(DstLang), HostString2UIntPtr(api_keys));
+	SrcLang = "UTF8";
+	DstLang = "UTF8";
+	return HostUIntPtr2String(res);
+
+//HostPrintUTF8(Untranslated + "---");
+//HostPrintUTF8(Text);
 
   Text.replace("\"", "'");
   Text.replace("\\", "/");

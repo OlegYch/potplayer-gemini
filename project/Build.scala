@@ -5,23 +5,24 @@ import sbt.Keys.*
 import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.nativeLink
 
 object Build {
-  lazy val build = taskKey[Seq[File]]("build")
+  lazy val build = taskKey[Seq[(File, String)]]("build")
   lazy val deploy = taskKey[Unit]("deploy")
   lazy val deployTarget = settingKey[File]("potplayer dir")
 
   case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
 
   val libs = Seq(
-    ("libcurl", "curl", "libcurl.dll"),
-    ("idn2", "libidn2", "idn2-0.dll"),
     ("unistring", "libunistring", "unistring-5.dll"),
+    ("idn2", "libidn2", "idn2-0.dll"),
+    ("crypto", "openssl", "libcrypto-3-x64.dll"),
+    ("libcurl", "curl", "libcurl.dll"),
   )
 
   def settings(library: Project) = Seq(
     deployTarget := file("""d:\program files\PotPlayer\"""),
     Compile / Keys.compile / Keys.skip := true,
     Compile / Keys.packageBin / Keys.artifactName := ((_, _, _) => "potplayer-gemini.zip"),
-    Compile / Keys.packageBin / Keys.mappings := build.value.map(f => f -> f.name),
+    Compile / Keys.packageBin / Keys.mappings := build.value,
     Compile / Keys.unmanagedSourceDirectories := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
     Compile / Keys.packageTimestamp := None,
@@ -34,30 +35,37 @@ object Build {
         Config(300, 50, "Gemini-Free"),
         Config(0, 100, "Gemini-Paid"),
       )
+      val base = (ThisBuild / baseDirectory).value.absolutePath
+      val sourceLibs = libs.map {
+        case (_, path, dll) =>
+          file(s"$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/bin/$dll")
+      } :+ (library / Compile / nativeLink).value
+      val targetLibs = sourceLibs.map { lib =>
+        val targeFile = target / lib.name
+        IO.copyFile(lib, targeFile)
+        targeFile -> lib.name
+      }
       val files = configs.flatMap { config =>
+        val libsArray = targetLibs.map(f => s"'${f._2}'").mkString(", ")
         val compiled = source
           .replaceFirst("uint DefaultPause =.*", "uint DefaultPause = " + config.DefaultPause + ";")
           .replaceFirst("uint MaxContextLines =.*", "uint MaxContextLines = " + config.MaxContextLines + ";")
           .replaceFirst("string Name =.*", "string Name = \"" + config.Name + "\";")
           .replaceFirst("bool debug =.*", "bool debug = " + debug + ";")
+          .replaceFirst("array<string> libs = .*", s"array<string> libs = {$libsArray};")
         val compiledAs = target / s"SubtitleTranslate - ${config.Name}.as"
         IO.write(compiledAs, compiled)
         val compiledIcon = target / s"SubtitleTranslate - ${config.Name}.ico"
         IO.copyFile(sourceIcon, compiledIcon)
-        Seq(compiledAs, compiledIcon)
+        Seq(compiledAs, compiledIcon).map(f => f -> f.name)
       }
-      val base = (ThisBuild / baseDirectory).value.absolutePath
-      val lib = Seq((library / Compile / nativeLink).value) ++ libs.map {
-        case (_, path, dll) =>
-          file(s"$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/bin/$dll")
-      }
-      files ++ lib
+      files ++ targetLibs
     },
     deploy := {
       import scala.sys.process.*
       val built = build.value
       (deployTarget.value / "KillPot64.exe").absolutePath.!
-      IO.copy(built.map(f => (f, deployTarget.value / "Extension/Subtitle/Translate" / f.name)), CopyOptions().withOverwrite(true))
+      IO.copy(built.map(f => (f._1, deployTarget.value / "Extension/Subtitle/Translate" / f._2)), CopyOptions().withOverwrite(true))
       (deployTarget.value / "PotPlayerMini64.exe").absolutePath.run()
     },
   )
