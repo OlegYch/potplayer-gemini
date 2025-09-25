@@ -64,7 +64,7 @@ jobs:
 
       - name: Build release
         shell: cmd
-        run: sbt 'libraryJVM/test;package'
+        run: sbt libraryJVM/test;package
         env:
           GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
 
