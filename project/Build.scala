@@ -14,7 +14,7 @@ object Build {
   val libs = Seq(
     ("unistring", "libunistring", "unistring-5.dll"),
     ("idn2", "libidn2", "idn2-0.dll"),
-    ("crypto", "openssl", "libcrypto-3-x64.dll"),
+    ("libcrypto", "openssl", "libcrypto-3-x64.dll"),
     ("libcurl", "curl", "libcurl.dll"),
   )
 
@@ -38,7 +38,7 @@ object Build {
       val base = (ThisBuild / baseDirectory).value.absolutePath
       val sourceLibs = libs.map {
         case (_, path, dll) =>
-          file(s"$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/bin/$dll")
+          file(s"$base/vcpkg_installed/x64-windows/bin/$dll")
       } :+ (library / Compile / nativeLink).value
       val targetLibs = sourceLibs.map { lib =>
         val targeFile = target / lib.name
@@ -86,7 +86,7 @@ object Build {
             s"-static",
             "-D_CRT_SECURE_NO_WARNINGS=1",
             "-Wno-macro-redefined",
-            s"-I$base/vcpkg_installed/vcpkg/pkgs/curl_x64-windows/include",
+            s"-I$base/vcpkg_installed/x64-windows/include",
           )
         )
         .withLinkingOptions(
@@ -96,7 +96,7 @@ object Build {
             case (name, path, _) =>
               Seq(
                 s"-l$name",
-                s"-L$base/vcpkg_installed/vcpkg/pkgs/${path}_x64-windows/lib",
+                s"-L$base/vcpkg_installed/x64-windows/lib",
               )
           }
         )
