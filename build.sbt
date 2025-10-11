@@ -7,6 +7,7 @@ lazy val library = crossProject(JVMPlatform, NativePlatform)
   .settings(
     name := "potplayer-gemini-library",
     libraryDependencies ++= Seq(
+      "io.github.cquiroz"             %%% "scala-java-time" % "2.6.0",
       "com.softwaremill.sttp.client4" %%% "circe"         % "4.0.11",
       "io.circe"                      %%% "circe-generic" % "0.14.14",
     ),

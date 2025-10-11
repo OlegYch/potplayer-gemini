@@ -5,6 +5,7 @@ import sttp.client4.*
 import sttp.client4.circe.*
 
 import java.nio.charset.Charset
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{Future, blocking}
@@ -42,7 +43,15 @@ class Gemini {
     "gemini-2.0-flash-lite"
   )
 
-  private case class ModelInfo(delay: Duration, errors: Int)
+  case class TimedResult(res: Result, d: Duration, ts: Instant)
+  private case class ModelInfo(results: List[TimedResult]) {
+    def addResult(result: Result, delay: Duration) = copy(results = (TimedResult(result, delay, Instant.now) :: results).take(100))
+
+    def delays = results.view.filter(_.res.result.isRight).map(_.d)
+    def errors = results.view.collect { case TimedResult(Result(result = Left(e)), d, ts) => e -> ts }
+    override def toString: String = s"Avg delay: ${delays.map(_.toMillis).sum / delays.size
+        .max(1)}, errors in last 10 secs: ${errors.count(_._2.isAfter(Instant.now.minusSeconds(10)))}"
+  }
   private val ModelsInfo = TrieMap[(String, Int), ModelInfo]()
   private def timed[T](f: => Future[T]) = {
     val start = System.currentTimeMillis()
@@ -51,8 +60,9 @@ class Gemini {
   private def firstSuccess[T](f: List[Future[T]]): Future[T] = {
     if (f.isEmpty) Future.failed(new Exception("couldn't find success"))
     else
-      Future.firstCompletedOf(f).recoverWith { case e =>
-        firstSuccess(f.filterNot(_.value.exists(_.isFailure)))
+      Future.firstCompletedOf(f).recoverWith {
+        case e =>
+          firstSuccess(f.filterNot(_.value.exists(_.isFailure)))
       }
   }
   @transient private var untranslated = Vector[String]()
@@ -62,19 +72,20 @@ class Gemini {
     val attempts = Models.map { model =>
       val apiKeyIndex = Random.nextInt(apiKeys.size)
       val apiKey      = apiKeys(apiKeyIndex)
-      timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map { case ((request, r, res), d) =>
-        val old = ModelsInfo.get((model, apiKeyIndex))
-        res.fold(
-          e => {
-            ModelsInfo.update((model, apiKeyIndex), old.fold(ModelInfo(d, 1))(old => old.copy(errors = old.errors + 1)))
-            Logger.println(s"${model}:${apiKeyIndex} error '$e' for request:\n${request.asJson}\ncaused by:\n${r.body.toString}")
-            sys.error(e)
-          },
-          res => {
-            ModelsInfo.update((model, apiKeyIndex), old.fold(ModelInfo(d, 0))(_.copy(delay = d)))
-            res
-          }
-        )
+      timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
+        case (result, d) =>
+          val old = ModelsInfo.get((model, apiKeyIndex)).getOrElse(ModelInfo(Nil))
+          ModelsInfo.update((model, apiKeyIndex), old.addResult(result, d))
+          result.result.fold(
+            e => {
+              Logger.println(s"${model}:${apiKeyIndex} error '$e'")
+//            Logger.println(s"${model}:${apiKeyIndex} error '$e' for request:\n${request.asJson}\ncaused by:\n${r.body.toString}")
+              sys.error(e)
+            },
+            res => {
+              res
+            }
+          )
       }
     }
     firstSuccess(attempts)
@@ -83,10 +94,11 @@ class Gemini {
         context = (context :+ (toTranslate.mkString("\n"), r)).takeRight(MaxContextLines)
         r
       }
-      .recover { case e =>
-        untranslated = toTranslate.takeRight(10)
-        Logger.println(e)
-        "."
+      .recover {
+        case e =>
+          untranslated = toTranslate.takeRight(10)
+          Logger.println(e)
+          "."
       }
       .andThen { _ =>
         Logger.println(ModelsInfo.toVector.sortBy(_._1).mkString("\n"))
@@ -94,6 +106,7 @@ class Gemini {
   }
 
   private val backend = sttp.client4.DefaultSyncBackend()
+  case class Result(req: GeminiRequest, resp: Response[?], result: Either[String, String])
   def translateImpl(
       text: String,
       context: Seq[(String, String)],
@@ -102,7 +115,7 @@ class Gemini {
       to: String,
       apiKey: String,
       model: String
-  ): Future[(GeminiRequest, Response[?], Either[String, String])] = Future {
+  ): Future[Result] = Future {
     blocking {
       val url       = uri"https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}"
       val thePrompt = prompt.getOrElse(defaultPrompt) + from.fold(", translate to " + to)(from => ", translate from " + from + " to " + to)
@@ -131,7 +144,7 @@ class Gemini {
         res  <- deserializeJson[GeminiResponse].apply(body).left.map(_.toString)
         c    <- res.candidates.headOption.toRight("No candidates")
       } yield c.content.parts.map(_.text).mkString(", ")
-      (request, r, response)
+      Result(request, r, response)
     }
   }
 }
