@@ -65,27 +65,37 @@ class Gemini {
     f.map(_ -> Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS))
   }
   case class WithDelay[T](delay: Promise[Unit], result: Future[T]) {
-    def cancel = delay.tryFailure(new Exception("cancelled"))
+    def cancel  = delay.tryFailure(new Exception("cancelled"))
+    def proceed = delay.trySuccess(())
   }
-  //todo cancel delay if previous task fails
   private def delayed[T](label: String, d: Duration)(f: => Future[T]) = {
     val delay = Promise[Unit]()
-    Future {
-      blocking {
-        Thread.sleep(d.toMillis)
-        delay.trySuccess(())
-      }
-    }
+    val start = Instant.now
     val withDelay = for {
       _ <- delay.future.recover {
         case e =>
           Logger.println(s"Cancelled $label")
           throw e
       }
-      _ = Logger.println(s"Running $label after $d")
+      _ = Logger.println(s"Running $label ${Instant.now.toEpochMilli - start.toEpochMilli} of $d")
       f <- f
     } yield f
-    WithDelay(delay, withDelay)
+    val r = WithDelay(delay, withDelay)
+    Future {
+      blocking {
+        Thread.sleep(d.toMillis)
+        r.proceed
+      }
+    }
+    r
+  }
+  private def delayedSeq[T, R](tasks: Seq[T], delay: Duration)(f: (T, Int) => Future[R]) = {
+    tasks.zipWithIndex.foldLeft(Seq[WithDelay[R]]()) {
+      case (tasks, (task, idx)) =>
+        val d = delayed(task.toString, delay * idx)(f(task, idx))
+        tasks.lastOption.foreach(_.result.recover(_ => d.proceed))
+        tasks :+ d
+    }
   }
   private def firstSuccess[T](f: Seq[Future[T]]): Future[T] = {
     if (f.isEmpty) Future.failed(new Exception("couldn't find success"))
@@ -102,7 +112,7 @@ class Gemini {
     val toTranslate   = untranslated :+ text
     val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
     val bestModels = {
-      //todo keep sorting by best model
+      // todo keep sorting by best model
       ModelsInfo
         .filter(i => !i._2.dead && i._2.recentErrors.size < 2 && i._2.succeses.nonEmpty)
         .toVector
@@ -115,25 +125,23 @@ class Gemini {
     val attempts = if (lastCall.isAfter(Instant.now.minusMillis(100)) && untranslated.map(_.size).sum < 30) {
       Vector(delayed("", 0.millis)(Future.failed(new Exception("too fast"))))
     } else
-      currentModels.zipWithIndex.map {
+      delayedSeq(currentModels, 1000.millis) {
         case ((model, apiKeyIndex), idx) =>
           val modelKey = (model, apiKeyIndex)
           val apiKey   = apiKeys(apiKeyIndex)
-          delayed(modelKey.toString, (1000 * idx).millis) {
-            timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
-              case (result, d) =>
-                val old = ModelsInfo.get(modelKey).getOrElse(ModelInfo(Nil))
-                ModelsInfo.update(modelKey, old.addResult(result, d))
-                result.result.fold(
-                  e => {
-                    Logger.println(s"${model}:${apiKeyIndex} error")
+          timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
+            case (result, d) =>
+              val old = ModelsInfo.get(modelKey).getOrElse(ModelInfo(Nil))
+              ModelsInfo.update(modelKey, old.addResult(result, d))
+              result.result.fold(
+                e => {
+                  Logger.println(s"${model}:${apiKeyIndex} error")
 //                  Logger.println(s"${model}:${apiKeyIndex} error '$e'")
 //            Logger.println(s"${model}:${apiKeyIndex} error '$e' for request:\n${request.asJson}\ncaused by:\n${r.body.toString}")
-                    sys.error(e)
-                  },
-                  res => res
-                )
-            }
+                  sys.error(e)
+                },
+                res => res
+              )
           }
       }
     firstSuccess(attempts.map(_._2))
