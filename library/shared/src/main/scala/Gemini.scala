@@ -64,7 +64,7 @@ class Gemini {
       r.retryDelay.map(r => Instant.now.plusSeconds(r.toSeconds))
     }
     lazy val dead = results.size > 5 && results.take(5).forall(_.res.result.isLeft) && results.headOption.exists { r =>
-      r.ts.isBefore(retryAfter.getOrElse(Instant.now.plusSeconds(60)))
+      retryAfter.getOrElse(r.ts.plusSeconds(60)).isAfter(Instant.now)
     }
     lazy val averageDelay = delays.map(_.toMillis).sum / delays.size.max(1)
 
