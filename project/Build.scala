@@ -28,7 +28,8 @@ object Build {
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
     Compile / Keys.packageTimestamp := None,
     build := {
-      val debug = deployTarget.value.exists()
+      val debug = true //todo disable on release
+//      val debug = deployTarget.value.exists()
       val target = (Compile / Keys.productDirectories).value.head
       val source = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
