@@ -12,10 +12,11 @@ object Build {
   case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
 
   val libs = Seq(
-    ("unistring", "libunistring", "unistring-5.dll"),
-    ("idn2", "libidn2", "idn2-0.dll"),
-    ("libcrypto", "openssl", "libcrypto-3-x64.dll"),
-    ("libcurl", "curl", "libcurl.dll"),
+    ("unistring", "unistring-5.dll"),
+    ("idn2", "idn2-0.dll"),
+    ("libcrypto", "libcrypto-3-x64.dll"),
+    ("zlib", "zlib1.dll"),
+    ("libcurl", "libcurl.dll"),
   )
 
   def settings(library: Project) = Seq(
@@ -37,7 +38,7 @@ object Build {
       )
       val base = (ThisBuild / baseDirectory).value.absolutePath
       val sourceLibs = libs.map {
-        case (_, path, dll) =>
+        case (_, dll) =>
           file(s"$base/vcpkg_installed/x64-windows/bin/$dll")
       } :+ (library / Compile / nativeLink).value
       val targetLibs = sourceLibs.map { lib =>
@@ -93,7 +94,7 @@ object Build {
           _ ++ Seq(
             s"-static",
           ) ++ libs.flatMap {
-            case (name, path, _) =>
+            case (name, _) =>
               Seq(
                 s"-l$name",
                 s"-L$base/vcpkg_installed/x64-windows/lib",
