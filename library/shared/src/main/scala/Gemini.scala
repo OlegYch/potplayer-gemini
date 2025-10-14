@@ -67,6 +67,7 @@ class Gemini {
   case class WithDelay[T](delay: Promise[Unit], result: Future[T]) {
     def cancel = delay.tryFailure(new Exception("cancelled"))
   }
+  //todo cancel delay if previous task fails
   private def delayed[T](label: String, d: Duration)(f: => Future[T]) = {
     val delay = Promise[Unit]()
     Future {
@@ -96,38 +97,49 @@ class Gemini {
   }
   @transient private var untranslated = Vector[String]()
   @transient private var context      = Vector[(String, String)]()
+  @transient private var lastCall     = Instant.MIN
   def translate(text: String, prompt: Option[String], from: Option[String], to: String, apiKeys: Seq[String]): Future[String] = {
     val toTranslate   = untranslated :+ text
     val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
-    val bestModels =
-      ModelsInfo.filter(i => !i._2.dead && i._2.recentErrors.size < 2 && i._2.succeses.nonEmpty).toVector.sortBy(_._2.averageDelay)
+    val bestModels = {
+      //todo keep sorting by best model
+      ModelsInfo
+        .filter(i => !i._2.dead && i._2.recentErrors.size < 2 && i._2.succeses.nonEmpty)
+        .toVector
+        .sortBy(_._2.averageDelay.max(1500))
+    }
     Logger.println(bestModels.mkString("\n"))
     val currentModels = (bestModels.map(_._1) ++ defaultModels).distinct
 //    Logger.println(currentModels.mkString("\n"))
-    val attempts = currentModels.zipWithIndex.map {
-      case ((model, apiKeyIndex), idx) =>
-        val modelKey = (model, apiKeyIndex)
-        val apiKey   = apiKeys(apiKeyIndex)
-        delayed(modelKey.toString, (700 * idx).millis) {
-          timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
-            case (result, d) =>
-              val old = ModelsInfo.get(modelKey).getOrElse(ModelInfo(Nil))
-              ModelsInfo.update(modelKey, old.addResult(result, d))
-              result.result.fold(
-                e => {
-                  Logger.println(s"${model}:${apiKeyIndex} error")
+    // todo prioritize skipping short texts
+    val attempts = if (lastCall.isAfter(Instant.now.minusMillis(100)) && untranslated.map(_.size).sum < 30) {
+      Vector(delayed("", 0.millis)(Future.failed(new Exception("too fast"))))
+    } else
+      currentModels.zipWithIndex.map {
+        case ((model, apiKeyIndex), idx) =>
+          val modelKey = (model, apiKeyIndex)
+          val apiKey   = apiKeys(apiKeyIndex)
+          delayed(modelKey.toString, (1000 * idx).millis) {
+            timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
+              case (result, d) =>
+                val old = ModelsInfo.get(modelKey).getOrElse(ModelInfo(Nil))
+                ModelsInfo.update(modelKey, old.addResult(result, d))
+                result.result.fold(
+                  e => {
+                    Logger.println(s"${model}:${apiKeyIndex} error")
 //                  Logger.println(s"${model}:${apiKeyIndex} error '$e'")
 //            Logger.println(s"${model}:${apiKeyIndex} error '$e' for request:\n${request.asJson}\ncaused by:\n${r.body.toString}")
-                  sys.error(e)
-                },
-                res => res
-              )
+                    sys.error(e)
+                  },
+                  res => res
+                )
+            }
           }
-        }
-    }
+      }
     firstSuccess(attempts.map(_._2))
       .map { r =>
         untranslated = Vector()
+        lastCall = Instant.now
         context = (context :+ (toTranslate.mkString("\n"), r)).takeRight(MaxContextLines)
         r
       }
