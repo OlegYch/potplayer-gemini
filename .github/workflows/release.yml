@@ -18,8 +18,23 @@ jobs:
     name: Release
     env:
       RELEASE: ${{ startsWith(github.event.head_commit.message, 'Release')  }}
-      RELEASE_NAME: v${{ github.event.repository.updated_at }}-${{ github.event.after }}
     steps:
+      - uses: bhowell2/github-substring-action@1.0.2
+        id: RELEASE_DATE
+        with:
+          value: ${{ github.event.repository.updated_at }}
+          length_from_start: 10
+
+      - uses: bhowell2/github-substring-action@1.0.2
+        id: RELEASE_HASH
+        with:
+          value: ${{ github.event.after }}
+          length_from_start: 5
+
+      - name: Set RELEASE_NAME
+        shell: cmd
+        run: echo RELEASE_NAME=v${{ steps.RELEASE_DATE.outputs.substring }}-${{ steps.RELEASE_HASH.outputs.substring }} >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
 
