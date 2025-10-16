@@ -80,13 +80,15 @@ jobs:
           GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
 
       - name: Tag version and push
+        shell: cmd
         if: env.RELEASE
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git tag "${RELEASE_NAME}"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "${RELEASE_NAME}"
+          git tag "%RELEASE_NAME%"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "%RELEASE_NAME%"
       - name: Fetch tags again to ensure latest tag is available
+        shell: cmd
         if: env.RELEASE
         run: git fetch --tags
       - name: Release
