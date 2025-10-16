@@ -33,7 +33,7 @@ jobs:
 
       - name: Set RELEASE_NAME
         shell: cmd
-        run: echo RELEASE_NAME=v${{ steps.RELEASE_DATE.outputs.substring }}-${{ steps.RELEASE_HASH.outputs.substring }} >> %GITHUB_ENV%
+        run: echo RELEASE_NAME=v${{ steps.RELEASE_DATE.outputs.substring }}-${{ steps.RELEASE_HASH.outputs.substring }}>> %GITHUB_ENV%
 
       - name: Checkout
         uses: actions/checkout@v4
