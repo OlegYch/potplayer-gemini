@@ -112,6 +112,7 @@ jobs:
         with:
           files: target/*/potplayer-gemini.zip
           generate_release_notes: true
+          tag_name: ${{ env.RELEASE_NAME }}
 
       - name: Clean caches
         shell: cmd
