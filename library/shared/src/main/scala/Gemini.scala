@@ -56,21 +56,20 @@ class Gemini {
 
     lazy val delays         = results.view.filter(_.res.result.isRight).map(_.d)
     lazy val succeses       = results.view.collect { case TimedResult(Result(result = Right(e)), d, ts) => e -> ts }
-    lazy val recentSucceses = succeses.filter(_._2.isAfter(Instant.now.minusSeconds(10)))
     lazy val errors         = results.view.collect { case TimedResult(Result(result = Left(e)), d, ts) => e -> ts }
 
-    lazy val recentErrors = errors.filter(_._2.isAfter(Instant.now.minusSeconds(10)))
+    def recentErrors(now: Instant) = errors.filter(_._2.isAfter(Instant.now.minusSeconds(10)))
     lazy val retryAfter = results.headOption.flatMap { r =>
-      r.retryDelay.map(r => Instant.now.plusSeconds(r.toSeconds))
+      r.retryDelay.map(d => r.ts.plusSeconds(d.toSeconds))
     }
-    lazy val dead = results.size > 5 && results.take(5).forall(_.res.result.isLeft) && results.headOption.exists { r =>
-      retryAfter.getOrElse(r.ts.plusSeconds(60)).isAfter(Instant.now)
+    def dead(now: Instant) = results.size > 5 && results.take(5).forall(_.res.result.isLeft) && results.headOption.exists { r =>
+      retryAfter.getOrElse(r.ts.plusSeconds(60)).isAfter(now)
     }
     lazy val averageDelay = delays.map(_.toMillis).sum / delays.size.max(1)
 
     override def toString = {
       val ra = retryAfter.map(retryAfter => s", Retry after: $retryAfter").getOrElse("")
-      s"Calls: ${results.size}, Success: ${succeses.size}, Avg delay: $averageDelay, errors in last 10 secs: ${recentErrors.size}$ra"
+      s"Calls: ${results.size}, Success: ${succeses.size}, Avg delay: $averageDelay, errors in last 10 secs: ${recentErrors(Instant.now).size}$ra"
     }
   }
   private val ModelsInfo = TrieMap[(String, Int), ModelInfo]()
@@ -139,10 +138,11 @@ class Gemini {
       Logger.println("too short")
       Vector()
     } else {
+      val now = Instant.now
       val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
-      val deadModels    = ModelsInfo.filter(_._2.dead)
+      val deadModels    = ModelsInfo.filter(_._2.dead(now))
       Logger.println(deadModels.map("DEAD: " + _).mkString("\n"))
-      val bestModels = ModelsInfo.filterNot(_._2.dead).toVector.sortBy { (k, v) =>
+      val bestModels = ModelsInfo.filterNot(_._2.dead(now)).toVector.sortBy { (k, v) =>
         (v.averageDelay / 1500, defaultModels.indexOf(k))
       }
       Logger.println(bestModels.map("BEST: " + _).mkString("\n"))
