@@ -2,12 +2,19 @@ name: Release
 
 on:
   push:
+    tags-ignore:
+      - '**'
   pull_request:
+    tags-ignore:
+      - '**'
 
 jobs:
   build:
     runs-on: windows-latest
     name: Release
+    env:
+      RELEASE: ${{ startsWith(github.event.head_commit.message, 'Release')  }}
+      RELEASE_NAME: v${{ github.event.repository.updated_at }}-${{ github.event.after }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,9 +75,19 @@ jobs:
         env:
           GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
 
+      - name: Tag version and push
+        if: env.RELEASE
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git tag "${RELEASE_NAME}"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "${RELEASE_NAME}"
+      - name: Fetch tags again to ensure latest tag is available
+        if: env.RELEASE
+        run: git fetch --tags
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.RELEASE
         with:
           files: target/*/potplayer-gemini.zip
           generate_release_notes: true
