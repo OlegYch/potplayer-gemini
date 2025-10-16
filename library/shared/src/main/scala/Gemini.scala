@@ -88,7 +88,7 @@ class Gemini {
     val withDelay = for {
       _ <- delay.future.recover {
         case e =>
-          Logger.println(s"Cancelled $label")
+//          Logger.println(s"Cancelled $label")
           throw e
       }
       _ = Logger.println(s"Running $label after ${System.currentTimeMillis() - start}ms of ${d.toMillis}ms")
