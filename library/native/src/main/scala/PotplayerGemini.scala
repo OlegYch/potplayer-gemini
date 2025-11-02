@@ -22,7 +22,7 @@ object PotplayerGemini {
     )
     toCString {
       try
-        Await.result(result, 9.seconds)
+        s"<u><b>${Await.result(result, 9.seconds)}</b></u>"
       catch {
         case e: Throwable =>
           Logger.println(e)
