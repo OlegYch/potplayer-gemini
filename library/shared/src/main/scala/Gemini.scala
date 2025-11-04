@@ -128,7 +128,7 @@ class Gemini {
   @transient private var context      = Vector[(String, String)]()
   @transient private var lastSuccess  = Instant.MIN
   def translate(text: String, prompt: Option[String], from: Option[String], to: String, apiKeys: Seq[String]): Future[String] = {
-    Future(())
+//    Future(())
     return Future.successful("1")
   }
 
