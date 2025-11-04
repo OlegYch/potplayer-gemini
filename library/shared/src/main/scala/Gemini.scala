@@ -128,60 +128,8 @@ class Gemini {
   @transient private var context      = Vector[(String, String)]()
   @transient private var lastSuccess  = Instant.MIN
   def translate(text: String, prompt: Option[String], from: Option[String], to: String, apiKeys: Seq[String]): Future[String] = {
-    val toTranslate = untranslated :+ text
-    val tooShort    = lastSuccess.isAfter(Instant.now.minusMillis(100)) && text.length < 5
-    val tooFast     = lastSuccess.isAfter(Instant.now.minusMillis(200)) && toTranslate.map(_.length).sum < 30
-    val attempts = if (tooFast) {
-      Logger.println("too fast")
-      Vector()
-    } else if (tooShort) {
-      Logger.println("too short")
-      Vector()
-    } else {
-      val now = Instant.now
-      val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
-      val deadModels    = ModelsInfo.filter(_._2.dead(now))
-      Logger.println(deadModels.map("DEAD: " + _).mkString("\n"))
-      val bestModels = ModelsInfo.filterNot(_._2.dead(now)).toVector.sortBy { (k, v) =>
-        (v.averageDelay / 1500, defaultModels.indexOf(k))
-      }
-      Logger.println(bestModels.map("BEST: " + _).mkString("\n"))
-      val currentModels = (bestModels.map(_._1) ++ defaultModels).distinct
-      delayedSeq(currentModels, 1000.millis) {
-        case ((model, apiKeyIndex), idx) =>
-          val modelKey = (model, apiKeyIndex)
-          val apiKey   = apiKeys(apiKeyIndex)
-          timed(translateImpl(toTranslate.mkString("\n"), context, prompt, from, to, apiKey, model)).map {
-            case (result, d) =>
-              val old = ModelsInfo.get(modelKey).getOrElse(ModelInfo(Nil))
-              ModelsInfo.update(modelKey, old.addResult(result, d))
-              result.result.fold(
-                e => {
-                  Logger.println(s"${model}:${apiKeyIndex} error: ${e.replaceAll("[\\r\\n]", " ")}")
-                  sys.error(e)
-                },
-                res => res
-              )
-          }
-      }
-    }
-    firstSuccess(attempts.map(_._2))
-      .map { r =>
-        untranslated = Vector()
-        lastSuccess = Instant.now
-        context = (context :+ (toTranslate.mkString("\n"), r)).takeRight(MaxContextLines)
-        r
-      }
-      .recover {
-        case e =>
-          untranslated = toTranslate.takeRight(10)
-          Logger.println(e)
-          "."
-      }
-      .map { r =>
-        attempts.foreach(_.cancel)
-        r
-      }
+    Future(())
+    return Future.successful("1")
   }
 
   private val backend = sttp.client4.DefaultSyncBackend()
