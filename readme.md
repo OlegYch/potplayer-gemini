@@ -19,20 +19,8 @@ Uses [Gemini](https://gemini.google.com/app) to translate subtitles in real time
                               
 
 ## Tuning
-### Models
-- gemini-2.0-flash model is used by default because of its superior translation quality.
-- gemini-2.0-flash-lite is used as a fallback when an error occurs, e.g. request quota is exceeded.
-
-At the moment there are two versions of extension with different settings:
-- Gemini-Flash-Free uses the best available model for translation and is tuned to be used with free account, by forcing a bit of delay between translation calls.
-- Gemini-Flash-Paid uses a bit more relaxed settings for better experience, but can be problematic when using with free account. Try it after you set up Gemini billing. 
-
-Note that free Gemini plan is limited to 1500 translations per day per model, which should probably be enough for a couple of movies.
-
-### Prompt
+### Prompt TODO
 During extension login you can provide custom translation prompt.
 ![Login](images/login.png)
 This can be used to adjust translation accuracy or style. You can see the default prompt [here](src/main/as/gemini.as#L7), use it as a sample.
 
-### Fine tuning
-A few more settings are available at the start of `*.as` files, you can edit them freely, but don't forget to restart PotPlayer.
