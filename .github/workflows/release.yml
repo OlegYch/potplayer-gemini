@@ -22,7 +22,7 @@ jobs:
       - uses: bhowell2/github-substring-action@1.0.2
         id: RELEASE_DATE
         with:
-          value: ${{ github.event.repository.updated_at }}
+          value: ${{ github.event.head_commit.timestamp }}
           length_from_start: 10
 
       - uses: bhowell2/github-substring-action@1.0.2
