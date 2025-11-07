@@ -200,11 +200,11 @@ class Gemini {
       val thePrompt = prompt.getOrElse(defaultPrompt) + from.fold(", translate to " + to)(from => ", translate from " + from + " to " + to)
       val request = GeminiRequest(
         List(
-          SafetySetting("HARM_CATEGORY_HARASSMENT", "BLOCK_NONE"),
-          SafetySetting("HARM_CATEGORY_HATE_SPEECH", "BLOCK_NONE"),
-          SafetySetting("HARM_CATEGORY_SEXUALLY_EXPLICIT", "BLOCK_NONE"),
-          SafetySetting("HARM_CATEGORY_DANGEROUS_CONTENT", "BLOCK_NONE"),
-          SafetySetting("HARM_CATEGORY_CIVIC_INTEGRITY", "BLOCK_NONE"),
+          SafetySetting("HARM_CATEGORY_HARASSMENT", "OFF"),
+          SafetySetting("HARM_CATEGORY_HATE_SPEECH", "OFF"),
+          SafetySetting("HARM_CATEGORY_SEXUALLY_EXPLICIT", "OFF"),
+          SafetySetting("HARM_CATEGORY_DANGEROUS_CONTENT", "OFF"),
+          SafetySetting("HARM_CATEGORY_CIVIC_INTEGRITY", "OFF"),
         ),
         GenerationConfig(temperature = 0.1, seed = 100500),
         SystemInstruction(List(Text(thePrompt))),
