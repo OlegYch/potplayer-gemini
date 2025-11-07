@@ -38,11 +38,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2
-        with:
-          version: "20.1.4"
-
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -82,6 +77,11 @@ jobs:
         run: sbt libraryJVM/test
         env:
           GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "20.1.4"
 
       - name: Cache vcpkg
         uses: actions/cache@v4
