@@ -8,6 +8,7 @@ import scala.concurrent.Future
 class GeminiTest(using ExecutionEnv) extends Specification {
   private val keys = sys.env("GEMINI_KEYS")
 //  private val model = "gemini-2.0-flash"
+//  private val model = "gemini-2.5-flash-lite"
   private val model = Gemini.Models.head
   "Hello" in {
     translateImpl("Hello", Nil, None, None, "Italian", keys, model).map(_ must beLike {
@@ -34,7 +35,7 @@ class GeminiTest(using ExecutionEnv) extends Specification {
         model
       )
       _ = resp must beLike {
-        case Gemini.Result(result = Right("Sei molto bella.")) =>
+        case Gemini.Result(result = Right("Sei molto bella." | "Sei molto bella")) =>
           ok
       }
       resp <- translateImpl(
@@ -47,7 +48,7 @@ class GeminiTest(using ExecutionEnv) extends Specification {
         model
       )
       _ = resp must beLike {
-        case Gemini.Result(result = Right("Sei molto bello.")) =>
+        case Gemini.Result(result = Right("Sei molto bello." | "Sei molto bello")) =>
           ok
       }
     } yield ok

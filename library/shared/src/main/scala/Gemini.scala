@@ -17,14 +17,15 @@ import scala.concurrent.duration.{Duration, DurationInt}
 object Gemini extends Gemini
 class Gemini {
   case class GeminiRequest(
-      safety_settings: Seq[SafetySetting],
-      generation_config: GenerationConfig,
-      system_instruction: SystemInstruction,
+      safetySettings: Seq[SafetySetting],
+      generationConfig: GenerationConfig,
+      systemInstruction: SystemInstruction,
       contents: Seq[Content]
   ) derives Encoder.AsObject,
         Decoder
   case class SafetySetting(category: String, threshold: String) derives Encoder.AsObject, Decoder
-  case class GenerationConfig(temperature: Double, seed: Int) derives Encoder.AsObject, Decoder
+  case class GenerationConfig(temperature: Double, seed: Int, thinkingConfig: Option[ThinkingConfig]) derives Encoder.AsObject, Decoder
+  case class ThinkingConfig(includeThoughts: Boolean) derives Encoder.AsObject, Decoder
   case class Content(role: String, parts: Seq[Text]) derives Encoder.AsObject, Decoder
   case class SystemInstruction(parts: Seq[Text]) derives Encoder.AsObject, Decoder
   case class Text(text: String) derives Encoder.AsObject, Decoder
@@ -54,9 +55,9 @@ class Gemini {
   private case class ModelInfo(results: List[TimedResult]) {
     def addResult(result: Result, delay: Duration) = copy(results = (TimedResult(result, delay, Instant.now) :: results).take(100))
 
-    lazy val delays         = results.view.filter(_.res.result.isRight).map(_.d)
-    lazy val succeses       = results.view.collect { case TimedResult(Result(result = Right(e)), d, ts) => e -> ts }
-    lazy val errors         = results.view.collect { case TimedResult(Result(result = Left(e)), d, ts) => e -> ts }
+    lazy val delays   = results.view.filter(_.res.result.isRight).map(_.d)
+    lazy val succeses = results.view.collect { case TimedResult(Result(result = Right(e)), d, ts) => e -> ts }
+    lazy val errors   = results.view.collect { case TimedResult(Result(result = Left(e)), d, ts) => e -> ts }
 
     def recentErrors(now: Instant) = errors.filter(_._2.isAfter(Instant.now.minusSeconds(10)))
     lazy val retryAfter = results.headOption.flatMap { r =>
@@ -138,7 +139,7 @@ class Gemini {
       Logger.println("too short")
       Vector()
     } else {
-      val now = Instant.now
+      val now           = Instant.now
       val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
       val deadModels    = ModelsInfo.filter(_._2.dead(now))
       Logger.println(deadModels.map("DEAD: " + _).mkString("\n"))
@@ -206,7 +207,7 @@ class Gemini {
           SafetySetting("HARM_CATEGORY_DANGEROUS_CONTENT", "OFF"),
           SafetySetting("HARM_CATEGORY_CIVIC_INTEGRITY", "OFF"),
         ),
-        GenerationConfig(temperature = 0.1, seed = 100500),
+        GenerationConfig(temperature = 0.1, seed = 100500, Some(ThinkingConfig(includeThoughts = false))),
         SystemInstruction(List(Text(thePrompt))),
         context.flatMap { (user, model) =>
           List(
