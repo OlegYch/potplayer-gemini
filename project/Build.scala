@@ -5,8 +5,8 @@ import sbt.Keys.*
 import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.nativeLink
 
 object Build {
-  lazy val build = taskKey[Seq[(File, String)]]("build")
-  lazy val deploy = taskKey[Unit]("deploy")
+  lazy val build        = taskKey[Seq[(File, String)]]("build")
+  lazy val deploy       = taskKey[Unit]("deploy")
   lazy val deployTarget = settingKey[File]("potplayer dir")
 
   case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
@@ -18,37 +18,37 @@ object Build {
     ("zlib", "zlib1.dll"),
     ("libcurl", "libcurl.dll"),
   )
+  val translatorDlls = settingKey[Seq[File]]("translatorDlls")
+  val copyDlls       = taskKey[Seq[File]]("copyDlls")
 
-  def settings(library: Project) = Seq(
-    deployTarget := file("""d:\program files\PotPlayer\"""),
-    Compile / Keys.compile / Keys.skip := true,
-    Compile / Keys.packageBin / Keys.artifactName := ((_, _, _) => "potplayer-gemini.zip"),
-    Compile / Keys.packageBin / Keys.mappings := build.value,
-    Compile / Keys.unmanagedSourceDirectories := Seq((Compile / Keys.sourceDirectory).value / "as"),
+  def settings(loader: Project, translator: Project) = Seq(
+    deployTarget                                         := file("""d:\program files\PotPlayer\"""),
+    Compile / Keys.compile / Keys.skip                   := true,
+    Compile / Keys.packageBin / Keys.artifactName        := ((_, _, _) => "potplayer-gemini.zip"),
+    Compile / Keys.packageBin / Keys.mappings            := build.value,
+    Compile / Keys.unmanagedSourceDirectories            := Seq((Compile / Keys.sourceDirectory).value / "as"),
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
-    Compile / Keys.packageTimestamp := None,
+    Compile / Keys.packageTimestamp                      := None,
     build := {
-      val debug = true //todo disable on release
+      val debug = true // todo disable on release
 //      val debug = deployTarget.value.exists()
-      val target = (Compile / Keys.productDirectories).value.head
-      val source = IO.read((Compile / Keys.sources).value.head)
+      val target     = (Compile / Keys.productDirectories).value.head
+      val source     = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
       val configs = List(
         Config(300, 50, "Gemini-Free"),
         Config(0, 100, "Gemini-Paid"),
       )
-      val base = (ThisBuild / baseDirectory).value.absolutePath
-      val sourceLibs = libs.map {
-        case (_, dll) =>
-          file(s"$base/vcpkg_installed/x64-windows/bin/$dll")
-      } :+ (library / Compile / nativeLink).value
-      val targetLibs = sourceLibs.map { lib =>
-        val targeFile = target / lib.name
+      val translatorFiles = (translator / translatorDlls).value :+ (translator / Compile / nativeLink).value
+      val loaderLib       = (loader / Compile / nativeLink).value
+      IO.copyFile(loaderLib, target / loaderLib.name)
+      val targetLibs = (loaderLib -> loaderLib.name) +: translatorFiles.map { lib =>
+        val targeFile = target / "potplayer-gemini" / lib.name
         IO.copyFile(lib, targeFile)
-        targeFile -> lib.name
+        targeFile -> s"potplayer-gemini/${lib.name}"
       }
       val files = configs.flatMap { config =>
-        val libsArray = targetLibs.map(f => s"'${f._2}'").mkString(", ")
+        val libsArray = Seq(loaderLib.name).map(f => s"'${f}'").mkString(", ")
         val compiled = source
           .replaceFirst("uint DefaultPause =.*", "uint DefaultPause = " + config.DefaultPause + ";")
           .replaceFirst("uint MaxContextLines =.*", "uint MaxContextLines = " + config.MaxContextLines + ";")
@@ -77,12 +77,29 @@ object Build {
 
   def librarySettings = Seq(
     scalaVersion := "3.7.3",
-    nativeConfig := {
-      val c = nativeConfig.value
+    translatorDlls := {
       val base = (ThisBuild / baseDirectory).value.absolutePath
-      c.withLTO(LTO.none) // thin
+      libs.map {
+        case (name, dll) =>
+          file(s"$base/vcpkg_installed/x64-windows/bin/$dll")
+      }
+    },
+    copyDlls := {
+      val t = (Compile / target).value
+      translatorDlls.value.map { f =>
+        val r = t / s"scala-${scalaVersion.value}" / f.name
+        sbt.IO.copyFile(f, r)
+        r
+      }
+    },
+    Compile / runMain := (Compile / runMain).dependsOn(copyDlls).evaluated,
+    Compile / run     := (Compile / run).dependsOn(copyDlls).evaluated,
+    nativeConfig := {
+      val c    = nativeConfig.value
+      val base = (ThisBuild / baseDirectory).value.absolutePath
+      c.withLTO(LTO.none)     // thin
         .withMode(Mode.debug) // releaseFast
-        .withGC(GC.immix) // commix
+        .withGC(GC.immix)     // commix
         .withCompileOptions(
           _ ++ Seq(
             s"-static",
