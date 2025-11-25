@@ -9,7 +9,7 @@ object ProcessUtils {
   def getParentProcessId = {
     val current = Kernel32.GetCurrentProcessId.toString
 //    println(current)
-    val processes = new ProcessBuilder("wmic process get ParentProcessID, ProcessID").start()
+    val processes = new ProcessBuilder("powershell -Command \"Get-CimInstance -ClassName Win32_Process | Select-Object -Property ParentProcessId, ProcessId\"").start()
     val output = Iterator.continually {
       val o = Iterator.continually(processes.getInputStream.read).takeWhile(_.toChar != '\n')
       val r = o.map(_.toChar).mkString.trim
