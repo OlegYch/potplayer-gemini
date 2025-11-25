@@ -92,8 +92,9 @@ object Build {
         r
       }
     },
-    Compile / runMain := (Compile / runMain).dependsOn(copyDlls).evaluated,
-    Compile / run     := (Compile / run).dependsOn(copyDlls).evaluated,
+    Compile / runMain           := (Compile / runMain).dependsOn(copyDlls).evaluated,
+    Compile / run               := (Compile / run).dependsOn(copyDlls).evaluated,
+    Test / test / testExecution := (Test / test / testExecution).dependsOn(copyDlls).value,
     nativeConfig := {
       val c    = nativeConfig.value
       val base = (ThisBuild / baseDirectory).value.absolutePath
@@ -103,6 +104,8 @@ object Build {
         .withCompileOptions(
           _ ++ Seq(
             s"-static",
+            "-DGC_INITIAL_HEAP_SIZE=5m",
+            "-DGC_MAXIMUM_HEAP_SIZE=100m",
             "-D_CRT_SECURE_NO_WARNINGS=1",
             "-Wno-macro-redefined",
             s"-I$base/vcpkg_installed/x64-windows/include",

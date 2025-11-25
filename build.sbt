@@ -17,6 +17,7 @@ lazy val library = crossProject(JVMPlatform, NativePlatform)
       "org.specs2" %% "specs2-core" % "5.6.4" % Test,
     ),
   )
+  .enablePlugins(ScalaNativeJUnitPlugin)
 lazy val loader = project
   .enablePlugins(ScalaNativePlugin)
   .settings(

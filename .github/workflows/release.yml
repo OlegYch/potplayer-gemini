@@ -72,7 +72,7 @@ jobs:
         shell: cmd
         run: git checkout . && git clean -df
 
-      - name: Test release
+      - name: Test jvm code
         shell: cmd
         run: sbt libraryJVM/test
         env:
@@ -93,6 +93,10 @@ jobs:
       - name: Install Packages
         shell: cmd
         run: .\vcpkg-install.bat
+
+      - name: Test native code
+        shell: cmd
+        run: sbt libraryNative/test
 
       - name: Build release
         shell: cmd

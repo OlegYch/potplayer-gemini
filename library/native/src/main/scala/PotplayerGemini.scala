@@ -40,48 +40,16 @@ object PotplayerGemini extends App {
     }
   }
 
-  @link("kernel32")
-  @extern
-  object Kernel32 {
-    def AllocConsole(): CBool      = extern
-    def GetCurrentProcessId: DWord = extern
-    def OpenProcess(
-        dwDesiredAccess: AccessToken,
-        bInheritHandle: CBool,
-        dwProcessId: DWord,
-    ): Handle = extern
-  }
-//  Kernel32.AllocConsole()
   Future {
     blocking {
       try {
-        val current = Kernel32.GetCurrentProcessId.toString
-        println(current)
-        val processes = new ProcessBuilder("wmic process get ParentProcessID, ProcessID").start()
-        val output = Iterator.continually {
-          val o = Iterator.continually(processes.getInputStream.read).takeWhile(_.toChar != '\n')
-          val r = o.map(_.toChar).mkString.trim
-          println(s"'$r'")
-          r
-        }
-        val parent = output.collectFirst {
-          case s if s.endsWith(s" ${current}") => s.takeWhile(_ != ' ').toInt
-        }
-        println(parent)
-        while (true) {
-          val h = Kernel32.OpenProcess(AccessToken.TOKEN_READ, false, UInt.valueOf(parent.get))
-          if (h != null) {
-            Thread.sleep(100)
-            HandleApi.CloseHandle(h)
-          } else {
-            sys.exit(0)
-          }
-        }
+        ProcessUtils.exitAfterParentProcess()
       } catch {
         case e => e.printStackTrace()
       }
     }
   }
+
   while (true) {
     val input  = Console.in.readLine()
     val parsed = io.circe.jawn.parse(input)
@@ -107,7 +75,7 @@ object PotplayerGemini extends App {
                     println(e)
                     ".."
                 }
-              println(s"result: ${output}")
+              println(s"result: ${output.replaceAll("\n", " ")}")
             }
           )
     )
