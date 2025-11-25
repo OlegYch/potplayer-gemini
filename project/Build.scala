@@ -1,6 +1,6 @@
-import sbt.*
-import sbt.Keys
+import sbt.{Keys, *}
 import sbt.Keys.*
+import sbtnativeimage.NativeImagePlugin.autoImport.nativeImage
 
 import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.nativeLink
 
@@ -21,7 +21,8 @@ object Build {
   val translatorDlls = settingKey[Seq[File]]("translatorDlls")
   val copyDlls       = taskKey[Seq[File]]("copyDlls")
 
-  def settings(loader: Project, translator: Project) = Seq(
+  val useGraal = false
+  def settings(loader: Project, translatorNative: Project, translatorJVM: Project) = Seq(
     deployTarget                                         := file("""d:\program files\PotPlayer\"""),
     Compile / Keys.compile / Keys.skip                   := true,
     Compile / Keys.packageBin / Keys.artifactName        := ((_, _, _) => "potplayer-gemini.zip"),
@@ -39,8 +40,13 @@ object Build {
         Config(300, 50, "Gemini-Free"),
         Config(0, 100, "Gemini-Paid"),
       )
-      val translatorFiles = (translator / translatorDlls).value :+ (translator / Compile / nativeLink).value
-      val loaderLib       = (loader / Compile / nativeLink).value
+      val translatorFiles = Def.taskIf {
+        if (useGraal)
+          Seq(file((translatorJVM / Compile / nativeImage).value.getAbsolutePath + ".exe"))
+        else
+          (translatorNative / translatorDlls).value :+ (translatorNative / Compile / nativeLink).value
+      }.value
+      val loaderLib = (loader / Compile / nativeLink).value
       IO.copyFile(loaderLib, target / loaderLib.name)
       val targetLibs = (loaderLib -> loaderLib.name) +: translatorFiles.map { lib =>
         val targeFile = target / "potplayer-gemini" / lib.name
@@ -75,8 +81,13 @@ object Build {
   import scala.scalanative.build.*
   import scala.scalanative.sbtplugin.ScalaNativePlugin.autoImport.*
 
-  def librarySettings = Seq(
+  def baseSettings = Seq(
     scalaVersion := "3.7.3",
+    scalacOptions ++= Seq(
+      "-deprecation",
+    ),
+  )
+  def librarySettings = Seq(
     translatorDlls := {
       val base = (ThisBuild / baseDirectory).value.absolutePath
       libs.map {

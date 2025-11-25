@@ -1,3 +1,4 @@
+import Logger.println
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
@@ -8,7 +9,7 @@ import java.nio.charset.Charset
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{Future, Promise, blocking}
+import scala.concurrent.{Await, Future, Promise, blocking}
 import scala.util.control.NoStackTrace
 import scala.util.Random
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -92,7 +93,7 @@ class Gemini {
 //          Logger.println(s"Cancelled $label")
           throw e
       }
-      _ = Logger.println(s"Running $label after ${System.currentTimeMillis() - start}ms of ${d.toMillis}ms")
+      _ = println(s"Running $label after ${System.currentTimeMillis() - start}ms of ${d.toMillis}ms")
       f <- f
     } yield f
     val r = WithDelay(delay, withDelay)
@@ -133,20 +134,20 @@ class Gemini {
     val tooShort    = lastSuccess.isAfter(Instant.now.minusMillis(100)) && text.length < 5
     val tooFast     = lastSuccess.isAfter(Instant.now.minusMillis(200)) && toTranslate.map(_.length).sum < 30
     val attempts = if (tooFast) {
-      Logger.println("too fast")
+      println("too fast")
       Vector()
     } else if (tooShort) {
-      Logger.println("too short")
+      println("too short")
       Vector()
     } else {
       val now           = Instant.now
       val defaultModels = Models.flatMap(model => (0 until apiKeys.size).map(model -> _))
       val deadModels    = ModelsInfo.filter(_._2.dead(now))
-      Logger.println(deadModels.map("DEAD: " + _).mkString("\n"))
+      println(deadModels.map("DEAD: " + _).mkString("\n"))
       val bestModels = ModelsInfo.filterNot(_._2.dead(now)).toVector.sortBy { (k, v) =>
         (v.averageDelay / 1500, defaultModels.indexOf(k))
       }
-      Logger.println(bestModels.map("BEST: " + _).mkString("\n"))
+      println(bestModels.map("BEST: " + _).mkString("\n"))
       val currentModels = (bestModels.map(_._1) ++ defaultModels).distinct
       delayedSeq(currentModels, 1000.millis) {
         case ((model, apiKeyIndex), idx) =>
@@ -158,7 +159,7 @@ class Gemini {
               ModelsInfo.update(modelKey, old.addResult(result, d))
               result.result.fold(
                 e => {
-                  Logger.println(s"${model}:${apiKeyIndex} error: ${e.replaceAll("[\\r\\n]", " ")}")
+                  println(s"${model}:${apiKeyIndex} error: ${e.replaceAll("[\\r\\n]", " ")}")
                   sys.error(e)
                 },
                 res => res
@@ -229,6 +230,41 @@ class Gemini {
         res  <- deserializeJson[GeminiErrorWrapper].apply(body).left.map(_.toString)
       } yield res.error
       Result(request, r, response, error)
+    }
+  }
+
+  case class Input(text: String, prompt: String, from: String, to: String, apiKeys: String) derives Decoder
+  def translateInput(input: String): String = {
+    val parsed = io.circe.jawn.parse(input)
+    parsed.fold(
+      e => e.toString,
+      js =>
+        js.as[Input]
+          .fold(
+            e => e.toString,
+            input => {
+              val result = translate(
+                text = input.text,
+                prompt = Option(input.prompt).filter(_.nonEmpty),
+                from = Option(input.from).filter(_.nonEmpty),
+                to = input.to,
+                apiKeys = input.apiKeys.split(" ").toSeq,
+              )
+              try
+                s"<u><b>${Await.result(result, 9.seconds)}</b></u>"
+              catch {
+                case e: Throwable =>
+                  println(e)
+                  e.getMessage
+              }
+            }
+          )
+    )
+  }
+
+  def loop(): Unit = {
+    while (true) {
+      println(s"result: ${translateInput(Console.in.readLine()).replaceAll("\n", " ")}")
     }
   }
 }

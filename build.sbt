@@ -3,7 +3,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 import scala.scalanative.build.{Build => *, *}
 
 lazy val library = crossProject(JVMPlatform, NativePlatform)
-  .settings(Build.librarySettings)
+  .settings(Build.baseSettings)
   .settings(
     name := "potplayer-gemini-library",
     libraryDependencies ++= Seq(
@@ -13,15 +13,21 @@ lazy val library = crossProject(JVMPlatform, NativePlatform)
     ),
   )
   .jvmSettings(
+    Global / excludeLintKeys += nativeImageVersion,
+    nativeImageVersion := "22.3.3",
+    nativeImageOptions ++= List("--no-fallback", "-Ob"),
+    Compile / mainClass := Some("PotplayerGemini"),
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-core" % "5.6.4" % Test,
     ),
   )
-  .enablePlugins(ScalaNativeJUnitPlugin)
+  .jvmEnablePlugins(NativeImagePlugin)
+  .nativeSettings(Build.librarySettings)
+  .nativeEnablePlugins(ScalaNativeJUnitPlugin)
 lazy val loader = project
   .enablePlugins(ScalaNativePlugin)
+  .settings(Build.baseSettings)
   .settings(
-    scalaVersion := "3.7.3",
     name         := "potplayer-gemini-loader",
     libraryDependencies ++= Seq(
       "io.circe" %%% "circe-jawn" % "0.14.14",
@@ -46,6 +52,6 @@ lazy val root = (project in file("."))
   .settings(
     organization := "io.github.olegych",
     name         := "potplayer-gemini",
-    Build.settings(loader, library.native),
+    Build.settings(loader, library.native, library.jvm),
   )
   .aggregate(library.native, library.jvm)
