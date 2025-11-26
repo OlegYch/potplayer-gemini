@@ -50,14 +50,14 @@ jobs:
       - name: Cache SBT
         uses: actions/cache@v4
         with:
-          path: $env:userprofile\sbt
+          path: C:\Users\runneradmin\.sbt
           key: ${{ runner.os }}-sbt-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-sbt-
 
       - name: Cache coursier cache
         uses: actions/cache@v4
         with:
-          path: $env:LOCALAPPDATA\coursier
+          path: C:\Users\runneradmin\AppData\Local\coursier
           key: ${{ runner.os }}-coursier-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-coursier-
 
@@ -86,7 +86,7 @@ jobs:
       - name: Cache vcpkg
         uses: actions/cache@v4
         with:
-          path: $env:LOCALAPPDATA\vcpkg
+          path: C:\Users\runneradmin\AppData\Local\vcpkg
           key: ${{ runner.os }}-vcpkg-${{ github.run_number }}
           restore-keys: ${{ runner.os }}-vcpkg-
 
