@@ -1,4 +1,3 @@
-
 /*
 	real time subtitle translate for PotPlayer using Gemini 2.0 API
 	https://ai.google.dev/api/generate-content#v1beta.models.generateContent
@@ -6,21 +5,6 @@
 
 // adjust translation accuracy or style
 string default_prompt = "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation";
-// minimum milliseconds between translations, designed to keep api call rate under free tier limit
-// if you have paid tier you can set it to 0
-// #replaced by build
-uint DefaultPause = 300;
-// how much previous lines to pass to translation for improved understanding of the text
-// may quickly drain token quota, increase with care
-// #replaced by build
-uint MaxContextLines = 50;
-array<string> Models = {
-  "gemini-2.5-flash"
-  , "gemini-2.0-flash"
-  , "gemini-2.5-flash-lite"
-  , "gemini-2.0-flash-lite"
-};
-
 // #replaced by build
 string Name = "Gemini";
 
@@ -29,9 +13,6 @@ bool debug = false;
 
 // #replaced by build
 array<string> libs = {};
-
-// skip model if it takes too long to respond
-uint MaxDelay = 3000;
 
 // void OnInitialize()
 // void OnFinalize()
@@ -192,7 +173,7 @@ string GetTitle()
 
 string GetVersion()
 {
-	return "1";
+	return "2";
 }
 
 string GetDesc()
@@ -229,14 +210,14 @@ string ServerLogin(string User, string Pass)
   else current_prompt = default_prompt;
 	api_keys = Pass;
 	if (api_keys.empty()) return "Empty API key";
-  //string result = Translate("Hello", "English", "French");
-  //if (!result.empty())
+  string result = Translate("Hello", "English", "French");
+  if (!result.empty())
   {
   	return "200 ok";
   }
-  // else
+  else
   {
-    //return result;
+    return result;
   }
 }
 
@@ -255,126 +236,7 @@ array<string> GetDstLangs()
 	return GetSrcLangs();
 }
 
-string Untranslated = "";
-uint LastTime = 0;
-dictionary CurrentApiKey;
-dictionary ModelDelay;
-uint Pause = DefaultPause;
-array<string> ContextUser = {};
-array<string> ContextModel = {};
-
-dictionary CallGemini(string Text, string SrcLang, string DstLang, string Model)
-{
-  array<string> keys = api_keys.split(" ");
-  if (!CurrentApiKey.exists(Model)) CurrentApiKey[Model] = 0;
-  uint CallTime = HostGetTickCount();
-  uint oldDelay = uint(ModelDelay[Model]);
-  if (oldDelay == 0)
-  {
-    oldDelay = 10000; //model never succeeded
-  };
-  ModelDelay[Model] = 10000; //default to very long time if the call is aborted
-  uint keyIdx = uint(CurrentApiKey[Model]);
-  if (keyIdx >= keys.length())
-  {
-    CurrentApiKey[Model] = 0;
-    keyIdx = 0;
-  }
-  HostPrintUTF8(Model + " " + formatUInt(keyIdx) + " of " + formatUInt(keys.length()));
-  string api_key = keys[keyIdx];
-  CurrentApiKey[Model] = keyIdx + 1;
-
-  string url = "https://generativelanguage.googleapis.com/v1beta/models/" + Model + ":generateContent?key=" + api_key;
-  string prompt = current_prompt;
-  string context = "";
-  for( uint n = 0; n < ContextUser.length(); n++ )
-  {
-    context += """{"role":"user", "parts":[{"text": " """ + ContextUser[n] + """ "}]},""";
-    context += """{"role":"model", "parts":[{"text": " """ + ContextModel[n] + """ "}]},""";
-  }
-  //HostPrintUTF8(context);
-  if (SrcLang.length() > 0)
-  {
-    prompt += ", translate from " + SrcLang + " to " + DstLang;
-  } else
-  {
-    prompt += ", translate to " + DstLang;
-  }
-  string SendHeader = "Content-Type: application/json\r\n";
-  string Post = """{
-  "safety_settings":[
-      {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-      {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-      {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-      {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-      {"category": "HARM_CATEGORY_CIVIC_INTEGRITY", "threshold": "BLOCK_NONE"}
-    ],
-  "generation_config": {"temperature": 0.1, "seed": 100500},
-  "system_instruction": { "parts": { "text": " """ + prompt + """ "}},
-  "contents": [ """ +
-    context +
-    """{"role":"user", "parts":[{"text": " """ + Untranslated + Text + """ "}]}
-  ]
-  }""";
-  //HostPrintUTF8(Post);
-
-  uintptr http = HostOpenHTTP(url, UserAgent, SendHeader, Post);
-  string error = Model + "[" + formatUInt(keyIdx) + "]: ";
-  if (http != 0)
-  {
-		string json = HostGetContentHTTP(http);
-    string headers = HostGetHeaderHTTP(http);
-		HostCloseHTTP(http);
-		uint newDelay = HostGetTickCount() - CallTime;
-		//HostPrintUTF8(json);
-		//HostPrintUTF8(headers);
-    JsonReader Reader;
-    JsonValue Root;
-    if (Reader.parse(json, Root) && Root.isObject())
-    {
-      JsonValue choices = Root["candidates"];
-      if (choices.isArray())
-      {
-        string ret = choices[0]["content"]["parts"][0]["text"].asString();
-        ret.erase(ret.length() - 1, 1);
-        int last = ret.findLast("\n");
-        if (last > 0)
-        {
-          ret = ret.substr(last - 1, -1);
-        }
-        ContextUser.insertLast(Text);
-        ret.replace("\r\n", " ");
-        ret.replace("\n", " ");
-        ret.replace("\"", "'");
-        ret.replace("\\", "/");
-        ContextModel.insertLast(ret);
-        ret += "\n";
-        //HostPrintUTF8(ret);
-    		ModelDelay[Model] = newDelay;
-        return {{'success', ret}};
-      }
-      else
-      {
-        error += Root["error"]["message"].asString();
-        HostPrintUTF8(error);
-        ModelDelay[Model] = oldDelay > newDelay ? oldDelay : newDelay;
-        return {{'error', error}};
-      }
-    }
-    else
-    {
-      ModelDelay[Model] = oldDelay > newDelay ? oldDelay : newDelay;
-      return {{'error', error + "Can't parse " + json}};
-    }
-  }
-  else
-  {
-    ModelDelay[Model] = oldDelay;
-    return {{'error', error + "Can't open http connection"}};
-  }
-}
-
-uintptr lib;
+uintptr translate;
 string Translate(string Text, string &in SrcLang, string &in DstLang)
 {
   if (debug) HostOpenConsole();
@@ -389,94 +251,19 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   	if (SrcLang == short) SrcLang = full;
 	  if (DstLang == short) DstLang = full;
   }
-  if (lib == 0)
+  if (translate == 0)
   {
+    uintptr lib;
     for ( uint i = 0; i < libs.length(); i++)
     {
       lib = HostLoadLibrary(libs[i]);
       HostPrintUTF8(libs[i] + ": " + formatUInt(lib));
     }
+    translate = HostGetProcAddress(lib, "translate");
+    HostPrintUTF8("translate: " + formatUInt(translate));
   }
-  uintptr translate = HostGetProcAddress(lib, "translate");
-  HostPrintUTF8(formatUInt(translate));
   uintptr res = HostCallProcUIntPtr(translate, "ppppp", HostString2UIntPtr(Text), HostString2UIntPtr(current_prompt), HostString2UIntPtr(SrcLang), HostString2UIntPtr(DstLang), HostString2UIntPtr(api_keys));
 	SrcLang = "UTF8";
 	DstLang = "UTF8";
 	return HostUIntPtr2String(res);
-
-//HostPrintUTF8(Untranslated + "---");
-//HostPrintUTF8(Text);
-
-  Text.replace("\"", "'");
-  Text.replace("\\", "/");
-  Text.replace("\r\n", " ");
-  Text.replace("\n", " ");
-  if (ContextUser.length() > MaxContextLines)
-  {
-    ContextUser.removeRange(0, 1);
-    ContextModel.removeRange(0, 1);
-  }
-  //HostPrintUTF8(Text);
-	string ret = "";
-	uint elapsed = HostGetTickCount() - LastTime;
-	if (elapsed < Pause) //add some delay between subsequent calls to hopefully fit in gemini free tier
-	{
-    HostPrintUTF8("Too fast, waiting for " + formatUInt(Pause - elapsed));
-	  ret = "";
-	}
-  else
-	{
-    LastTime = HostGetTickCount();
-    string success = "";
-		string error = "";
-    uint modelIdx = 0;
-    while (modelIdx < Models.length() && success.empty()) {
-      string Model = Models[modelIdx];
-      uint delay = uint(ModelDelay[Model]);
-      HostPrintUTF8("Current delay for model " + Model + ": " + formatUInt(delay));
-      if (delay > MaxDelay)
-      {
-        ModelDelay[Model] = delay / 2;
-      }
-      else
-      {
-        dictionary result = CallGemini(Text, SrcLang, DstLang, Model);
-        success = string(result['success']);
-        error = string(result['error']);
-      }
-      modelIdx++;
-    }
-		if (!success.empty())
-		{
-		  ret = success;
-      Untranslated = "";
-      if (Pause > DefaultPause)
-      {
-        Pause -= DefaultPause / 2; //slowly allow more requests
-        HostPrintUTF8("Decreasing pause to " + formatUInt(Pause));
-      }
-		} else
-		{
-      if (Pause < DefaultPause * 10)
-      {
-        Pause += DefaultPause / 2;
-        HostPrintUTF8("Increasing pause to " + formatUInt(Pause));
-        ret = "";
-      } else
-      {
-        ret = error; //give up and display error
-      }
-		}
-	}
-	if (ret.empty())
-	{
-    ret = ".";
-    Untranslated += Text + " ";
-    Untranslated = Untranslated.Right(1000);
-	}
-	SrcLang = "UTF8";
-	DstLang = "UTF8";
-
-
-	return ret;
 }
