@@ -3,7 +3,7 @@
 Uses [Gemini](https://gemini.google.com/app) to translate subtitles in real time to and from any of >100 supported languages in [PotPlayer](https://potplayer.daum.net/)
 
 ## Installation
-- Go to https://aistudio.google.com/app/api-keys and register to get Gemini key (if you haven't already)
+- Go to https://aistudio.google.com/app/api-keys and register to get Gemini key
   ![API Key](images/key.png)
 - Download zip file from [releases](https://github.com/OlegYch/potplayer-gemini/releases)
 - Unzip to PotPlayer installation folder, eg `C:\Program Files\PotPlayer\Extension\Subtitle\Translate`
