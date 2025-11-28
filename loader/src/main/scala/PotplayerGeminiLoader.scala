@@ -34,8 +34,10 @@ object PotplayerGeminiLoader {
   println(potplayerExeString)
   private val translatorExe = potplayerExeString.toLowerCase.replaceAll("\\w+.exe", "") + "\\Extension\\Subtitle\\Translate\\potplayer-gemini\\potplayer-gemini-library.exe"
   println(translatorExe)
-  val process = new ProcessBuilder(translatorExe).start()
-  val reader  = new BufferedReader(new InputStreamReader(process.getInputStream))
+  def processInit = new ProcessBuilder(translatorExe).start()
+  def readerInit  = new BufferedReader(new InputStreamReader(process.getInputStream))
+  var process = processInit
+  var reader = readerInit
 
   case class Input(text: String, prompt: String, from: String, to: String, apiKeys: String) derives Encoder
   case class Output(text: String) derives Decoder
@@ -61,6 +63,8 @@ object PotplayerGeminiLoader {
   } catch {
     case e: Throwable =>
       e.printStackTrace(Console.out)
-      toCString(e.getMessage)
+      process = processInit
+      reader = readerInit
+      translate(text, prompt, from, to, apiKeys)
   }
 }
