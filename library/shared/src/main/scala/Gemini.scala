@@ -41,7 +41,6 @@ class Gemini {
   val defaultPrompt =
     "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation"
 
-  // #replaced by build
   val MaxContextLines = 50
   val Models = Vector(
     "gemini-2.5-flash",
@@ -129,7 +128,7 @@ class Gemini {
   @transient private var untranslated = Vector[String]()
   @transient private var context      = Vector[(String, String)]()
   @transient private var lastSuccess  = Instant.MIN
-  def translate(text: String, prompt: Option[String], from: Option[String], to: String, apiKeys: Seq[String]): Future[String] = {
+  def translate(text: String, prompt: Option[String], from: Option[String], to: String, apiKeys: Seq[String]): String = {
     val toTranslate = untranslated :+ text
     val tooShort    = lastSuccess.isAfter(Instant.now.minusMillis(100)) && text.length < 5
     val tooFast     = lastSuccess.isAfter(Instant.now.minusMillis(200)) && toTranslate.map(_.length).sum < 30
@@ -167,23 +166,20 @@ class Gemini {
           }
       }
     }
-    firstSuccess(attempts.map(_._2))
-      .map { r =>
-        untranslated = Vector()
-        lastSuccess = Instant.now
-        context = (context :+ (toTranslate.mkString("\n"), r)).takeRight(MaxContextLines)
-        r
-      }
-      .recover {
-        case e =>
-          untranslated = toTranslate.takeRight(10)
-          Logger.println(e)
-          "."
-      }
-      .map { r =>
-        attempts.foreach(_.cancel)
-        r
-      }
+    try {
+      val r = Await.result(firstSuccess(attempts.map(_._2)), 9.seconds)
+      untranslated = Vector()
+      lastSuccess = Instant.now
+      context = (context :+ (toTranslate.mkString("\n"), r)).takeRight(MaxContextLines)
+      r
+    } catch {
+      case e: Throwable =>
+        untranslated = toTranslate.takeRight(10)
+        Logger.println(e)
+        "."
+    } finally {
+      attempts.foreach(_.cancel)
+    }
   }
 
   private val backend = sttp.client4.DefaultSyncBackend()
@@ -244,20 +240,13 @@ class Gemini {
           .fold(
             e => e.toString,
             input => {
-              val result = translate(
+              translate(
                 text = input.text,
                 prompt = Option(input.prompt).filter(_.nonEmpty),
                 from = Option(input.from).filter(_.nonEmpty),
                 to = input.to,
                 apiKeys = input.apiKeys.split(" ").toSeq,
               )
-              try
-                Await.result(result, 9.seconds)
-              catch {
-                case e: Throwable =>
-                  println(e)
-                  e.getMessage
-              }
             }
           )
     )
