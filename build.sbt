@@ -54,4 +54,4 @@ lazy val root = (project in file("."))
     name         := "potplayer-gemini",
     Build.settings(loader, library.native, library.jvm),
   )
-  .aggregate(library.native, library.jvm)
+  .aggregate(loader, library.native, library.jvm)

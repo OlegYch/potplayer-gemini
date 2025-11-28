@@ -234,6 +234,7 @@ class Gemini {
   }
 
   case class Input(text: String, prompt: String, from: String, to: String, apiKeys: String) derives Decoder
+  case class Output(text: String) derives Encoder
   def translateInput(input: String): String = {
     val parsed = io.circe.jawn.parse(input)
     parsed.fold(
@@ -251,7 +252,7 @@ class Gemini {
                 apiKeys = input.apiKeys.split(" ").toSeq,
               )
               try
-                s"<u><b>${Await.result(result, 9.seconds)}</b></u>"
+                Await.result(result, 9.seconds)
               catch {
                 case e: Throwable =>
                   println(e)
@@ -264,7 +265,12 @@ class Gemini {
 
   def loop(): Unit = {
     while (true) {
-      println(s"result: ${translateInput(Console.in.readLine()).replaceAll("\n", " ")}")
+      val read = Console.in.readLine()
+      if (read != null) {
+        println(Output(translateInput(read)).asJson.noSpaces)
+      } else {
+        sys.exit(0)
+      }
     }
   }
 }

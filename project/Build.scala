@@ -9,8 +9,6 @@ object Build {
   lazy val deploy       = taskKey[Unit]("deploy")
   lazy val deployTarget = settingKey[File]("potplayer dir")
 
-  case class Config(DefaultPause: Int, MaxContextLines: Int, Name: String)
-
   val libs = Seq(
     ("unistring", "unistring-5.dll"),
     ("idn2", "idn2-0.dll"),
@@ -31,15 +29,10 @@ object Build {
     Compile / Keys.unmanagedSources / Keys.includeFilter := ("*.as"),
     Compile / Keys.packageTimestamp                      := None,
     build := {
-      val debug = true // todo disable on release
-//      val debug = deployTarget.value.exists()
+      val debug = deployTarget.value.exists()
       val target     = (Compile / Keys.productDirectories).value.head
       val source     = IO.read((Compile / Keys.sources).value.head)
       val sourceIcon = (Compile / Keys.resourceDirectory).value / "gemini.ico"
-      val configs = List(
-        Config(300, 50, "Gemini-Free"),
-        Config(0, 100, "Gemini-Paid"),
-      )
       val translatorFiles = Def.taskIf {
         if (useGraal)
           Seq(file((translatorJVM / Compile / nativeImage).value.getAbsolutePath + ".exe"))
@@ -53,17 +46,16 @@ object Build {
         IO.copyFile(lib, targeFile)
         targeFile -> s"potplayer-gemini/${lib.name}"
       }
-      val files = configs.flatMap { config =>
+      val files = {
+        val name = "Gemini"
         val libsArray = Seq(loaderLib.name).map(f => s"'${f}'").mkString(", ")
         val compiled = source
-          .replaceFirst("uint DefaultPause =.*", "uint DefaultPause = " + config.DefaultPause + ";")
-          .replaceFirst("uint MaxContextLines =.*", "uint MaxContextLines = " + config.MaxContextLines + ";")
-          .replaceFirst("string Name =.*", "string Name = \"" + config.Name + "\";")
+          .replaceFirst("string Name =.*", "string Name = \"" + name + "\";")
           .replaceFirst("bool debug =.*", "bool debug = " + debug + ";")
           .replaceFirst("array<string> libs = .*", s"array<string> libs = {$libsArray};")
-        val compiledAs = target / s"SubtitleTranslate - ${config.Name}.as"
+        val compiledAs = target / s"SubtitleTranslate - ${name}.as"
         IO.write(compiledAs, compiled)
-        val compiledIcon = target / s"SubtitleTranslate - ${config.Name}.ico"
+        val compiledIcon = target / s"SubtitleTranslate - ${name}.ico"
         IO.copyFile(sourceIcon, compiledIcon)
         Seq(compiledAs, compiledIcon).map(f => f -> f.name)
       }

@@ -265,5 +265,5 @@ string Translate(string Text, string &in SrcLang, string &in DstLang)
   uintptr res = HostCallProcUIntPtr(translate, "ppppp", HostString2UIntPtr(Text), HostString2UIntPtr(current_prompt), HostString2UIntPtr(SrcLang), HostString2UIntPtr(DstLang), HostString2UIntPtr(api_keys));
 	SrcLang = "UTF8";
 	DstLang = "UTF8";
-	return HostUIntPtr2String(res);
+	return "<u><b>" + HostUIntPtr2String(res) + "</b></u>";
 }

@@ -1,5 +1,6 @@
-import io.circe.Encoder
+import io.circe.{Decoder, Encoder}
 import io.circe.syntax.*
+import io.circe.jawn.parse
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.Charset
@@ -29,40 +30,36 @@ object PotplayerGeminiLoader {
   FixStdio.fix
   val potplayerExe = unsafe.alloc[CChar](10000)
   Kernel32.GetModuleFileNameA(null, potplayerExe, UInt.valueOf(10000))
-  println(potplayerExe)
-  private val translatorExe = fromCString(
-    potplayerExe,
-    Charset.defaultCharset()
-  ).toLowerCase.replaceAll("\\w+.exe", "") + "\\Extension\\Subtitle\\Translate\\potplayer-gemini\\potplayer-gemini-library.exe"
-  println(potplayerExe)
+  println(fromCString(potplayerExe))
+  private val translatorExe = fromCString(potplayerExe).toLowerCase.replaceAll("\\w+.exe", "") + "\\Extension\\Subtitle\\Translate\\potplayer-gemini\\potplayer-gemini-library.exe"
   println(translatorExe)
   val process = new ProcessBuilder(translatorExe).start()
   val reader  = new BufferedReader(new InputStreamReader(process.getInputStream))
 
   case class Input(text: String, prompt: String, from: String, to: String, apiKeys: String) derives Encoder
+  case class Output(text: String) derives Decoder
   @exported
   def translate(text: CString, prompt: CString, from: CString, to: CString, apiKeys: CString): CString = try {
-    println("hi")
     import io.circe.*
     val input = Input(
       text = fromCString(text),
       prompt = fromCString(prompt),
       from = fromCString(from),
       to = fromCString(to),
-      apiKeys = fromCString(apiKeys)
+      apiKeys = fromCString(apiKeys),
     ).asJson.noSpaces + "\n"
     process.getOutputStream.write(input.getBytes)
     val output = Iterator.continually(reader.readLine().trim)
-    val result = output.flatMap {
-      case s"result: ${result}" => Some(result)
-      case s =>
-        println(s)
+    val result = output.map(output => output -> parse(output).flatMap(_.as[Output])).flatMap {
+      case (_, Right(output)) => Some(output.text)
+      case (r, _) =>
+        println(r)
         None
     }
     toCString(result.next())
   } catch {
     case e: Throwable =>
-      e.printStackTrace()
+      e.printStackTrace(Console.out)
       toCString(e.getMessage)
   }
 }
