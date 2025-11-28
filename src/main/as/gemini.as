@@ -228,7 +228,8 @@ array<string> GetSrcLangs()
   {
     ret.insertLast(LangTable[i][0]);
   }
-	return ret;
+  ret.insertAt(0, ""); // empty is auto
+  return ret;
 }
 
 array<string> GetDstLangs()
