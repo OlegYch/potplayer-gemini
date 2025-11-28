@@ -3,7 +3,7 @@ import io.circe.syntax.*
 import io.circe.jawn.parse
 
 import java.io.{BufferedReader, InputStreamReader}
-import java.nio.charset.Charset
+import java.nio.charset.{Charset, StandardCharsets}
 import scala.scalanative.unsafe
 import scala.scalanative.unsafe.{CChar, CString, CWideString, Zone, exported, extern, fromCString, fromCWideString, link, toCString}
 import scala.scalanative.unsigned.UInt
@@ -28,10 +28,11 @@ object PotplayerGeminiLoader {
 
   private given Zone = Zone.open()
   FixStdio.fix
-  val potplayerExe = unsafe.alloc[CChar](10000)
-  Kernel32.GetModuleFileNameA(null, potplayerExe, UInt.valueOf(10000))
-  println(fromCString(potplayerExe))
-  private val translatorExe = fromCString(potplayerExe).toLowerCase.replaceAll("\\w+.exe", "") + "\\Extension\\Subtitle\\Translate\\potplayer-gemini\\potplayer-gemini-library.exe"
+  val potplayerExe = unsafe.alloc[WChar](10000)
+  Kernel32.GetModuleFileNameW(null, potplayerExe, UInt.valueOf(10000))
+  val potplayerExeString = fromCWideString(potplayerExe, StandardCharsets.UTF_16LE)
+  println(potplayerExeString)
+  private val translatorExe = potplayerExeString.toLowerCase.replaceAll("\\w+.exe", "") + "\\Extension\\Subtitle\\Translate\\potplayer-gemini\\potplayer-gemini-library.exe"
   println(translatorExe)
   val process = new ProcessBuilder(translatorExe).start()
   val reader  = new BufferedReader(new InputStreamReader(process.getInputStream))
