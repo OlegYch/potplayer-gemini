@@ -41,7 +41,7 @@ class Gemini {
   val defaultPrompt =
     "You are an expert subtitle translator, you can use profane language if it is present in the source, output only the translation"
 
-  val MaxContextLines = 50
+  val MaxContextLines = 10
   val Models = Vector(
     "gemini-2.5-flash",
     "gemini-2.0-flash",
